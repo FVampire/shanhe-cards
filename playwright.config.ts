@@ -1,0 +1,2 @@
+import { defineConfig } from '@playwright/test';
+export default defineConfig({ testDir:'./tests/browser',timeout:60000,workers:2,use:{baseURL:'http://127.0.0.1:5175',headless:true,viewport:{width:1440,height:1000},channel:'msedge',screenshot:'only-on-failure',trace:'retain-on-failure'},webServer:{command:'node tools/serve.mjs',env:{PORT:'5175'},url:'http://127.0.0.1:5175',reuseExistingServer:!process.env.CI} });

@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "sample-0.1",
+  "status": "illustrative",
+  "domains": [
+    { "id": "domain.music", "name": "音律" }
+  ],
+  "skills": [
+    { "id": "skill.music", "name": "演奏与合奏", "domainId": "domain.music" }
+  ],
+  "knowledgeDefinitions": [
+    { "id": "knowledge.river_song", "name": "江上曲", "domainId": "domain.music" }
+  ],
+  "workTopics": [
+    { "id": "topic.river_song", "name": "江上曲的个人改编" }
+  ],
+  "professions": [
+    {
+      "id": "profession.musician",
+      "name": "乐修",
+      "levels": [
+        {
+          "level": 1,
+          "requirements": {
+            "op": "all",
+            "conditions": [
+              { "op": "skill_at_least", "actorSlot": "actor", "skillId": "skill.music", "value": 20 },
+              { "op": "knowledge_at_least", "actorSlot": "actor", "knowledgeId": "knowledge.river_song", "stage": "understood" },
+              { "op": "has_work", "actorSlot": "actor", "topicId": "topic.river_song" }
+            ]
+          },
+          "unlocks": []
+        }
+      ]
+    }
+  ],
+  "statuses": [
+    { "id": "status.soul_bound", "name": "魂魄受拘", "rule": "blocks_major_actions" }
+  ],
+  "specialEffectProfiles": [
+    {
+      "id": "special.soul_capture",
+      "kind": "soul_capture",
+      "daoSpecialResistance": true,
+      "basePpm": 800000,
+      "floorPpm": 20000,
+      "strength": 20
+    }
+  ],
+  "omenProfiles": [
+    {
+      "id": "omen.mountain_danger",
+      "kind": "danger",
+      "basePpm": 100000,
+      "capPpm": 700000,
+      "scale": 20,
+      "message": "想到前方的山道，你心中隐隐不安。",
+      "suggestedActions": ["打听山道消息", "寻找同行者", "改走其他道路"]
+    },
+    {
+      "id": "omen.learning_opportunity",
+      "kind": "good",
+      "basePpm": 100000,
+      "capPpm": 700000,
+      "scale": 20,
+      "message": "路过书院时，你觉得这里似有值得一访的人。",
+      "suggestedActions": ["询问近期讲学", "拜访主人", "继续赶路"]
+    }
+  ],
+  "locations": [
+    { "id": "location.pavilion", "name": "听雨亭" },
+    { "id": "location.mountain_entrance", "name": "山道入口" },
+    { "id": "location.study_hall", "name": "县学书院" }
+  ],
+  "itemDefinitions": [
+    {
+      "id": "item.qin",
+      "name": "旧琴",
+      "tags": ["instrument.music"],
+      "stackable": false,
+      "onUse": []
+    },
+    {
+      "id": "item.river_score",
+      "name": "江上曲谱本",
+      "tags": ["score.music"],
+      "knowledgeId": "knowledge.river_song",
+      "stackable": false,
+      "onUse": []
+    },
+    {
+      "id": "item.soul_bell_test",
+      "name": "测试用摄魂铃",
+      "tags": ["artifact", "test_only"],
+      "stackable": false,
+      "onUse": [
+        {
+          "id": "effect.bell.impact",
+          "op": "damage",
+          "targetSlot": "target",
+          "amount": 3,
+          "damageType": "physical"
+        },
+        {
+          "id": "effect.bell.capture",
+          "op": "resolve_special_effect",
+          "targetSlot": "target",
+          "profileId": "special.soul_capture",
+          "onSuccess": [
+            {
+              "id": "effect.bell.bind_status",
+              "op": "apply_status",
+              "targetSlot": "target",
+              "statusId": "status.soul_bound",
+              "durationTicks": 30
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "action.duet_practice",
+      "name": "共同练习江上曲",
+      "slots": [
+        { "name": "actor", "entityKind": "character", "requiredTags": [], "required": true, "usage": "major_actor" },
+        { "name": "teacher", "entityKind": "character", "requiredTags": [], "required": true, "usage": "major_actor" },
+        { "name": "instrument", "entityKind": "item", "requiredTags": ["instrument.music"], "required": true, "usage": "exclusive_tool" },
+        { "name": "score", "entityKind": "item", "requiredTags": ["score.music"], "required": true, "usage": "exclusive_tool" }
+      ],
+      "conditions": {
+        "op": "all",
+        "conditions": [
+          { "op": "same_location", "slots": ["actor", "teacher", "instrument", "score"] },
+          { "op": "item_knowledge_is", "itemSlot": "score", "knowledgeId": "knowledge.river_song" },
+          { "op": "skill_at_least", "actorSlot": "teacher", "skillId": "skill.music", "value": 30 },
+          { "op": "knowledge_at_least", "actorSlot": "teacher", "knowledgeId": "knowledge.river_song", "stage": "mastered" },
+          { "op": "has_consent", "participantSlot": "teacher", "requesterSlot": "actor", "actionId": "action.duet_practice" }
+        ]
+      },
+      "durationTicks": 120,
+      "costs": [],
+      "consentUses": [
+        { "participantSlot": "teacher", "requesterSlot": "actor", "uses": 1 }
+      ],
+      "onComplete": [
+        { "id": "effect.practice.music", "op": "gain_practice", "actorSlot": "actor", "skillId": "skill.music", "units": 6 },
+        { "id": "effect.practice.trust", "op": "change_relationship", "fromSlot": "actor", "toSlot": "teacher", "field": "trust", "delta": 1 }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent",
+      "interruptPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.compose_piece",
+      "name": "整理自己的江上曲改编",
+      "slots": [
+        { "name": "actor", "entityKind": "character", "requiredTags": [], "required": true, "usage": "major_actor" },
+        { "name": "instrument", "entityKind": "item", "requiredTags": ["instrument.music"], "required": true, "usage": "exclusive_tool" },
+        { "name": "score", "entityKind": "item", "requiredTags": ["score.music"], "required": true, "usage": "exclusive_tool" }
+      ],
+      "conditions": {
+        "op": "all",
+        "conditions": [
+          { "op": "same_location", "slots": ["actor", "instrument", "score"] },
+          { "op": "item_knowledge_is", "itemSlot": "score", "knowledgeId": "knowledge.river_song" },
+          { "op": "skill_at_least", "actorSlot": "actor", "skillId": "skill.music", "value": 20 },
+          { "op": "knowledge_at_least", "actorSlot": "actor", "knowledgeId": "knowledge.river_song", "stage": "understood" }
+        ]
+      },
+      "durationTicks": 240,
+      "costs": [],
+      "consentUses": [],
+      "onComplete": [
+        { "id": "effect.compose.work", "op": "create_work", "actorSlot": "actor", "topicId": "topic.river_song", "knowledgeId": "knowledge.river_song" }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent",
+      "interruptPolicy": "release_unspent_keep_spent"
+    }
+  ],
+  "eventDefinitions": [
+    {
+      "id": "event.recital_invitation",
+      "name": "小集邀约",
+      "trigger": { "kind": "work_created", "topicId": "topic.river_song", "oncePerActor": true },
+      "durationTicks": 720,
+      "text": "听过你的改编后，一位组织小集的熟人邀请你进一步商谈演出。",
+      "options": [
+        {
+          "id": "discuss",
+          "text": "愿意商谈安排",
+          "conditions": { "op": "all", "conditions": [] },
+          "effects": [
+            { "id": "effect.invitation.discuss", "op": "record_fact", "factType": "recital_discussion_accepted", "subjectSlot": "actor", "source": "current_event" }
+          ]
+        },
+        {
+          "id": "decline",
+          "text": "这次暂且婉拒",
+          "conditions": { "op": "all", "conditions": [] },
+          "effects": [
+            { "id": "effect.invitation.decline", "op": "record_fact", "factType": "recital_invitation_declined", "subjectSlot": "actor", "source": "current_event" }
+          ]
+        }
+      ]
+    }
+  ],
+  "fixture": {
+    "id": "fixture.music_and_dao",
+    "currentTick": 0,
+    "worldSeed": "technical-document-example-01",
+    "characters": [
+      {
+        "id": "character.learner",
+        "name": "初学者",
+        "locationId": "location.pavilion",
+        "skills": { "skill.music": 8 },
+        "aptitudes": { "domain.music": 70 },
+        "professions": {},
+        "knowledge": { "knowledge.river_song": "understood" }
+      },
+      {
+        "id": "character.teacher",
+        "name": "友人乐师",
+        "locationId": "location.pavilion",
+        "skills": { "skill.music": 60 },
+        "aptitudes": { "domain.music": 80 },
+        "professions": { "profession.musician": 1 },
+        "knowledge": { "knowledge.river_song": "mastered" }
+      }
+    ],
+    "items": [
+      { "id": "instance.qin", "definitionId": "item.qin", "ownerId": "character.learner", "locationId": "location.pavilion", "quantity": 1 },
+      { "id": "instance.score", "definitionId": "item.river_score", "ownerId": "character.learner", "locationId": "location.pavilion", "quantity": 1 },
+      { "id": "instance.bell", "definitionId": "item.soul_bell_test", "ownerId": "character.learner", "locationId": "location.pavilion", "quantity": 1 }
+    ],
+    "relationships": [
+      { "id": "relation.learner_teacher", "fromId": "character.learner", "toId": "character.teacher", "trust": 5 }
+    ],
+    "consents": [
+      { "id": "consent.two_lessons", "participantId": "character.teacher", "requesterId": "character.learner", "actionId": "action.duet_practice", "usesRemaining": 2, "expiresTick": 720 }
+    ],
+    "facts": [
+      { "id": "fact.mountain_ambush", "factType": "hidden_ambush", "locationId": "location.mountain_entrance", "activeFromTick": 0, "expiresTick": 1440, "revision": 1, "knownTo": [] },
+      { "id": "fact.public_lecture", "factType": "scheduled_lecture", "locationId": "location.study_hall", "activeFromTick": 0, "expiresTick": 900, "revision": 1, "knownTo": [] }
+    ],
+    "omenContexts": [
+      { "id": "context.mountain", "occurrenceId": "occurrence.mountain_ambush.1", "factId": "fact.mountain_ambush", "subjectId": "character.learner", "contactLocationId": "location.mountain_entrance", "profileId": "omen.mountain_danger", "semanticRevision": 1 },
+      { "id": "context.lecture", "occurrenceId": "occurrence.public_lecture.1", "factId": "fact.public_lecture", "subjectId": "character.learner", "contactLocationId": "location.study_hall", "profileId": "omen.learning_opportunity", "semanticRevision": 1 }
+    ]
+  }
+}

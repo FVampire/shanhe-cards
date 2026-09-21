@@ -1,0 +1,1715 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "0.1.0",
+  "skills": [
+    {
+      "id": "skill.music",
+      "name": "音律"
+    },
+    {
+      "id": "skill.scholar",
+      "name": "学问"
+    },
+    {
+      "id": "skill.alchemy",
+      "name": "炼丹"
+    },
+    {
+      "id": "skill.cultivation",
+      "name": "调养"
+    }
+  ],
+  "knowledge": [
+    {
+      "id": "knowledge.river_song",
+      "name": "江上曲"
+    },
+    {
+      "id": "knowledge.herbal",
+      "name": "草木小解"
+    },
+    {
+      "id": "knowledge.breath",
+      "name": "松风调息法"
+    },
+    {
+      "id": "knowledge.history",
+      "name": "青溪县志"
+    }
+  ],
+  "locations": [
+    {
+      "id": "location.pavilion",
+      "name": "听雨亭",
+      "description": "雨过空山，故人抚琴。"
+    },
+    {
+      "id": "location.market",
+      "name": "青溪集",
+      "description": "人间烟火，亦是修行。"
+    },
+    {
+      "id": "location.study",
+      "name": "县学书院",
+      "description": "书页翻动，万物有声。"
+    },
+    {
+      "id": "location.garden",
+      "name": "青竹药园",
+      "description": "草木有时，慢火有候。"
+    },
+    {
+      "id": "location.mountain",
+      "name": "云岫山道",
+      "description": "山色苍茫，前路未明。"
+    }
+  ],
+  "items": [
+    {
+      "id": "item.qin",
+      "name": "松纹旧琴",
+      "tags": [
+        "instrument"
+      ],
+      "art": "qin",
+      "description": "旧琴仍有清音。归你所有，可用于练习、合奏与演出。"
+    },
+    {
+      "id": "item.score",
+      "name": "江上曲谱",
+      "tags": [
+        "score"
+      ],
+      "art": "scroll",
+      "description": "你已理解曲谱，但熟练与创作仍需时日。"
+    },
+    {
+      "id": "item.history",
+      "name": "青溪县志",
+      "tags": [
+        "history"
+      ],
+      "art": "book",
+      "description": "山川沿革、人事往来，都在薄薄一册中。"
+    },
+    {
+      "id": "item.breath",
+      "name": "调息手札",
+      "tags": [
+        "breath"
+      ],
+      "art": "lotus",
+      "description": "记有松风调息法。先求教或独自求学，方能理解。"
+    },
+    {
+      "id": "item.recipe",
+      "name": "草木小解",
+      "tags": [
+        "recipe"
+      ],
+      "art": "book",
+      "description": "清和散的药性与火候，可在研读后实践。"
+    },
+    {
+      "id": "item.herbs",
+      "name": "灵草",
+      "tags": [
+        "material"
+      ],
+      "art": "herb",
+      "description": "药园所出，炼制清和散需两份。"
+    },
+    {
+      "id": "item.medicine",
+      "name": "清和散",
+      "tags": [
+        "medicine"
+      ],
+      "art": "bottle",
+      "description": "平和的疗伤药，可恢复二十点健康。"
+    },
+    {
+      "id": "item.marginalia",
+      "name": "沈先生旧批",
+      "tags": [
+        "score"
+      ],
+      "art": "scroll",
+      "description": "谈掌故时他随手批的一页。拍子不在谱上，在江水转弯处。也可权当曲谱来用。"
+    },
+    {
+      "id": "item.draft",
+      "name": "未成之曲",
+      "tags": [
+        "score",
+        "draft"
+      ],
+      "art": "scroll",
+      "description": "缺了琴或谱，只好把半成品留下。它还不是《江上曲》，但已经可以拿去再练、再写。"
+    }
+  ],
+  "professions": [
+    {
+      "id": "profession.musician",
+      "name": "乐修",
+      "skillId": "skill.music",
+      "required": 20,
+      "knowledgeId": "knowledge.river_song",
+      "fact": "composed",
+      "description": "音律 20 · 理解江上曲 · 完成一首作品"
+    },
+    {
+      "id": "profession.alchemist",
+      "name": "丹师",
+      "skillId": "skill.alchemy",
+      "required": 15,
+      "knowledgeId": "knowledge.herbal",
+      "fact": "brewed",
+      "description": "炼丹 15 · 理解药理 · 完成清和散"
+    },
+    {
+      "id": "profession.cultivator",
+      "name": "炼气士",
+      "skillId": "skill.cultivation",
+      "required": 16,
+      "knowledgeId": "knowledge.breath",
+      "fact": "nurtured",
+      "description": "调养 16 · 理解调息法 · 完成调养"
+    }
+  ],
+  "actions": [
+    {
+      "id": "action.converse",
+      "name": "与沈先生小坐",
+      "description": "不必总是抚琴。听雨亭里一杯茶、一段闲话，也是相交。",
+      "category": "life",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "teacher",
+          "kind": "character",
+          "tags": [
+            "teacher"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 60,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.converse.0",
+          "op": "relationship",
+          "from": "actor",
+          "to": "teacher",
+          "units": 1
+        },
+        {
+          "id": "effect.converse.1",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 2
+        },
+        {
+          "id": "effect.converse.2",
+          "op": "willing",
+          "slot": "teacher",
+          "value": true
+        },
+        {
+          "id": "effect.converse.3",
+          "op": "fact",
+          "factType": "met_teacher",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.duet",
+      "name": "与沈先生合奏",
+      "description": "听见自己的琴声，也听见他人的停顿。一次共同练习，会留下真正的默契。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "teacher",
+          "kind": "character",
+          "tags": [
+            "teacher"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        },
+        {
+          "name": "score",
+          "kind": "item",
+          "tags": [
+            "score"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 120,
+      "conditions": [
+        {
+          "op": "consent"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.duet.0",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "units": 6
+        },
+        {
+          "id": "effect.duet.1",
+          "op": "relationship",
+          "from": "actor",
+          "to": "teacher",
+          "units": 1
+        },
+        {
+          "id": "effect.duet.2",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 8
+        },
+        {
+          "id": "effect.duet.3",
+          "op": "fact",
+          "factType": "duet",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.practice",
+      "name": "独自习琴",
+      "description": "把一小段旋律弹得妥帖。无人喝彩的时辰，也算修行。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        },
+        {
+          "name": "score",
+          "kind": "item",
+          "tags": [
+            "score"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 90,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.practice.4",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "units": 3
+        },
+        {
+          "id": "effect.practice.5",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 6
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.compose",
+      "name": "整理《江上曲》",
+      "description": "把听雨亭的风雨，写成属于自己的曲子。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        },
+        {
+          "name": "score",
+          "kind": "item",
+          "tags": [
+            "score"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 240,
+      "conditions": [
+        {
+          "op": "skill",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "value": 20
+        },
+        {
+          "op": "knowledge",
+          "slot": "actor",
+          "knowledgeId": "knowledge.river_song",
+          "stage": "understood"
+        },
+        {
+          "op": "no_work",
+          "topic": "river"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.compose.6",
+          "op": "work",
+          "slot": "actor",
+          "topic": "river",
+          "title": "江上曲 · 听雨"
+        },
+        {
+          "id": "effect.compose.7",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 12
+        },
+        {
+          "id": "effect.compose.8",
+          "op": "fact",
+          "factType": "composed",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.perform",
+      "name": "赴约演出",
+      "description": "按约在听雨亭奏完新曲。完成后才领取已预留的三十六枚灵钱。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        },
+        {
+          "name": "score",
+          "kind": "item",
+          "tags": [
+            "score"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 180,
+      "conditions": [
+        {
+          "op": "contract"
+        },
+        {
+          "op": "location",
+          "value": "location.pavilion"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.perform.9",
+          "op": "payment",
+          "source": "contract",
+          "amount": 36
+        },
+        {
+          "id": "effect.perform.10",
+          "op": "fact",
+          "factType": "performed",
+          "slot": "actor"
+        },
+        {
+          "id": "effect.perform.11",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 10
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.busk",
+      "name": "茶席献曲",
+      "description": "集市茶肆每日只收两场演奏。用本领换一餐饭，也换几位听众。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 120,
+      "conditions": [
+        {
+          "op": "skill",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "value": 8
+        },
+        {
+          "op": "location",
+          "value": "location.market"
+        },
+        {
+          "op": "market_demand"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.busk.12",
+          "op": "payment",
+          "source": "market",
+          "amount": 12
+        },
+        {
+          "id": "effect.busk.13",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "units": 2
+        },
+        {
+          "id": "effect.busk.14",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 8
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.read",
+      "name": "读《青溪县志》",
+      "description": "从旧纸上的水道与药园，读懂这座小城。",
+      "category": "scholar",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "book",
+          "kind": "item",
+          "tags": [
+            "history"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 120,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.read.15",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.scholar",
+          "units": 5
+        },
+        {
+          "id": "effect.read.16",
+          "op": "knowledge",
+          "slot": "actor",
+          "knowledgeId": "knowledge.history",
+          "stage": "understood"
+        },
+        {
+          "id": "effect.read.17",
+          "op": "fact",
+          "factType": "scholar_read",
+          "slot": "actor"
+        },
+        {
+          "id": "effect.read.18",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 4
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.annotate",
+      "name": "写一则地方考辨",
+      "description": "用史料和亲见厘清旧事，不必以胜负证明学问。",
+      "category": "scholar",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "book",
+          "kind": "item",
+          "tags": [
+            "history"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 180,
+      "conditions": [
+        {
+          "op": "skill",
+          "slot": "actor",
+          "skillId": "skill.scholar",
+          "value": 10
+        },
+        {
+          "op": "no_work",
+          "topic": "history"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.annotate.19",
+          "op": "work",
+          "slot": "actor",
+          "topic": "history",
+          "title": "青溪水道考"
+        },
+        {
+          "id": "effect.annotate.20",
+          "op": "fact",
+          "factType": "scholar_work",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.learn_breath",
+      "name": "请益松风调息法",
+      "description": "云游医师愿以两枚灵钱传授入门调养；方法需要日后的练习。",
+      "category": "cultivation",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "mentor",
+          "kind": "character",
+          "tags": [
+            "physician"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 150,
+      "conditions": [
+        {
+          "op": "location",
+          "value": "location.study"
+        }
+      ],
+      "costs": [
+        {
+          "resource": "currency",
+          "quantity": 2,
+          "owner": "actor",
+          "phase": "start"
+        }
+      ],
+      "effects": [
+        {
+          "id": "effect.learn_breath.21",
+          "op": "knowledge",
+          "slot": "actor",
+          "knowledgeId": "knowledge.breath",
+          "stage": "understood"
+        },
+        {
+          "id": "effect.learn_breath.22",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.cultivation",
+          "units": 4
+        },
+        {
+          "id": "effect.learn_breath.23",
+          "op": "fact",
+          "factType": "learned_breath",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.nurture",
+      "name": "松风调息",
+      "description": "以已学的方法调养身体。恢复来自调息法，与道行无关。",
+      "category": "cultivation",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "manual",
+          "kind": "item",
+          "tags": [
+            "breath"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 180,
+      "conditions": [
+        {
+          "op": "knowledge",
+          "slot": "actor",
+          "knowledgeId": "knowledge.breath",
+          "stage": "understood"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.nurture.24",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.cultivation",
+          "units": 6
+        },
+        {
+          "id": "effect.nurture.25",
+          "op": "health",
+          "slot": "actor",
+          "units": 10
+        },
+        {
+          "id": "effect.nurture.26",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": -25
+        },
+        {
+          "id": "effect.nurture.27",
+          "op": "fact",
+          "factType": "nurtured",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.retreat",
+      "name": "静室闭关",
+      "description": "用一整日检验所学。寿数的改善来自具体方法的一次验证，不可反复领取。",
+      "category": "cultivation",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "manual",
+          "kind": "item",
+          "tags": [
+            "breath"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 1440,
+      "conditions": [
+        {
+          "op": "skill",
+          "slot": "actor",
+          "skillId": "skill.cultivation",
+          "value": 16
+        }
+      ],
+      "costs": [
+        {
+          "resource": "currency",
+          "quantity": 5,
+          "owner": "actor",
+          "phase": "start"
+        }
+      ],
+      "effects": [
+        {
+          "id": "effect.retreat.28",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.cultivation",
+          "units": 8
+        },
+        {
+          "id": "effect.retreat.29",
+          "op": "longevity",
+          "slot": "actor",
+          "days": 30
+        },
+        {
+          "id": "effect.retreat.30",
+          "op": "health",
+          "slot": "actor",
+          "units": 15
+        },
+        {
+          "id": "effect.retreat.31",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": -35
+        },
+        {
+          "id": "effect.retreat.32",
+          "op": "fact",
+          "factType": "retreated",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.rest",
+      "name": "歇息片刻",
+      "description": "放下手中的事。喝茶、养神，待气息重新平稳。",
+      "category": "life",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 120,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.rest.33",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": -35
+        },
+        {
+          "id": "effect.rest.34",
+          "op": "health",
+          "slot": "actor",
+          "units": 5
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.herbal_study",
+      "name": "研读草木小解",
+      "description": "辨清药性与火候，方可动手炼药。",
+      "category": "alchemy",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "recipe",
+          "kind": "item",
+          "tags": [
+            "recipe"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 120,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.herbal_study.35",
+          "op": "knowledge",
+          "slot": "actor",
+          "knowledgeId": "knowledge.herbal",
+          "stage": "understood"
+        },
+        {
+          "id": "effect.herbal_study.36",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.alchemy",
+          "units": 5
+        },
+        {
+          "id": "effect.herbal_study.37",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 5
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.gather",
+      "name": "照料药圃",
+      "description": "药圃有生长周期；每个游戏日可收获一次。",
+      "category": "alchemy",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "garden",
+          "kind": "facility",
+          "tags": [
+            "garden"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 180,
+      "conditions": [
+        {
+          "op": "daily_harvest"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.gather.38",
+          "op": "item",
+          "definitionId": "item.herbs",
+          "owner": "actor",
+          "quantity": 3
+        },
+        {
+          "id": "effect.gather.39",
+          "op": "fact",
+          "factType": "harvested",
+          "slot": "actor"
+        },
+        {
+          "id": "effect.gather.40",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 12
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.brew",
+      "name": "炼制清和散",
+      "description": "两份灵草，一炉慢火。完成时消费预留药材，中途取消会归还。",
+      "category": "alchemy",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "herbalist"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "furnace",
+          "kind": "facility",
+          "tags": [
+            "furnace"
+          ],
+          "usage": "exclusive_tool"
+        },
+        {
+          "name": "recipe",
+          "kind": "item",
+          "tags": [
+            "recipe"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 180,
+      "conditions": [
+        {
+          "op": "skill",
+          "slot": "actor",
+          "skillId": "skill.alchemy",
+          "value": 5
+        },
+        {
+          "op": "knowledge",
+          "slot": "actor",
+          "knowledgeId": "knowledge.herbal",
+          "stage": "understood"
+        }
+      ],
+      "costs": [
+        {
+          "resource": "item.herbs",
+          "quantity": 2,
+          "owner": "actor",
+          "phase": "finish"
+        }
+      ],
+      "effects": [
+        {
+          "id": "effect.brew.41",
+          "op": "item",
+          "definitionId": "item.medicine",
+          "owner": "actor",
+          "quantity": 1
+        },
+        {
+          "id": "effect.brew.42",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.alchemy",
+          "units": 5
+        },
+        {
+          "id": "effect.brew.43",
+          "op": "fact",
+          "factType": "brewed",
+          "slot": "actor"
+        },
+        {
+          "id": "effect.brew.44",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 10
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.medicine",
+      "name": "服用清和散",
+      "description": "普通药物稳定疗伤，不因道行高低而失效。",
+      "category": "cultivation",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 30,
+      "conditions": [],
+      "costs": [
+        {
+          "resource": "item.medicine",
+          "quantity": 1,
+          "owner": "actor",
+          "phase": "start"
+        }
+      ],
+      "effects": [
+        {
+          "id": "effect.medicine.45",
+          "op": "health",
+          "slot": "actor",
+          "units": 20
+        },
+        {
+          "id": "effect.medicine.46",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": -10
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.lore_talk",
+      "name": "谈地方掌故",
+      "description": "把县志摊开。沈先生听的不是沿革，是江水转弯处的拍子。",
+      "category": "life",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "teacher",
+          "kind": "character",
+          "tags": [
+            "teacher"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "book",
+          "kind": "item",
+          "tags": [
+            "history"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 80,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.lore_talk.0",
+          "op": "relationship",
+          "from": "actor",
+          "to": "teacher",
+          "units": 1
+        },
+        {
+          "id": "effect.lore_talk.1",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.scholar",
+          "units": 2
+        },
+        {
+          "id": "effect.lore_talk.2",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 3
+        },
+        {
+          "id": "effect.lore_talk.3",
+          "op": "item",
+          "definitionId": "item.marginalia",
+          "owner": "actor",
+          "quantity": 1
+        },
+        {
+          "id": "effect.lore_talk.4",
+          "op": "willing",
+          "slot": "teacher",
+          "value": true
+        },
+        {
+          "id": "effect.lore_talk.5",
+          "op": "fact",
+          "factType": "met_teacher",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.insist_duet",
+      "name": "强求合奏",
+      "description": "约已尽，你仍把琴推过去。这一次没有默契，只有争执里的一句实话。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "teacher",
+          "kind": "character",
+          "tags": [
+            "teacher"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        },
+        {
+          "name": "score",
+          "kind": "item",
+          "tags": [
+            "score"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 90,
+      "conditions": [
+        {
+          "op": "consent_spent"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.insist_duet.0",
+          "op": "relationship",
+          "from": "actor",
+          "to": "teacher",
+          "units": -1
+        },
+        {
+          "id": "effect.insist_duet.1",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 10
+        },
+        {
+          "id": "effect.insist_duet.2",
+          "op": "willing",
+          "slot": "teacher",
+          "value": false
+        },
+        {
+          "id": "effect.insist_duet.3",
+          "op": "insight",
+          "question": "为什么他忽然不愿再弹？",
+          "understanding": "许可是一份礼物。逼出来的合奏，只留下难堪。"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.qin_rest",
+      "name": "抚琴入静",
+      "description": "不对照曲谱。把旧琴当蒲团，让手指自己停下来。",
+      "category": "cultivation",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 90,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.qin_rest.0",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": -20
+        },
+        {
+          "id": "effect.qin_rest.1",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "units": 1
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.read_breath",
+      "name": "默读调息手札",
+      "description": "不求人讲解。自己把字句读通，身体的功课仍在后头。",
+      "category": "cultivation",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "manual",
+          "kind": "item",
+          "tags": [
+            "breath"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 120,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.read_breath.0",
+          "op": "knowledge",
+          "slot": "actor",
+          "knowledgeId": "knowledge.breath",
+          "stage": "understood"
+        },
+        {
+          "id": "effect.read_breath.1",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.cultivation",
+          "units": 3
+        },
+        {
+          "id": "effect.read_breath.2",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 5
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.taste_herb",
+      "name": "生嚼灵草",
+      "description": "不按方、不入炉。苦味会告诉你一点药性，也会伤到自己。",
+      "category": "alchemy",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "herbs",
+          "kind": "item",
+          "tags": [
+            "material"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 40,
+      "conditions": [],
+      "costs": [
+        {
+          "resource": "item.herbs",
+          "quantity": 1,
+          "owner": "actor",
+          "phase": "finish"
+        }
+      ],
+      "effects": [
+        {
+          "id": "effect.taste_herb.0",
+          "op": "health",
+          "slot": "actor",
+          "units": -2
+        },
+        {
+          "id": "effect.taste_herb.1",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 6
+        },
+        {
+          "id": "effect.taste_herb.2",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.alchemy",
+          "units": 1
+        },
+        {
+          "id": "effect.taste_herb.3",
+          "op": "insight",
+          "question": "生药在舌上是什么味道？",
+          "understanding": "药性未解。苦先于效，伤先于治。"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.draft_qin",
+      "name": "对着空弦起草",
+      "description": "没有曲谱，只好把听过的段落记成残稿。它还成不了《江上曲》。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "instrument",
+          "kind": "item",
+          "tags": [
+            "instrument"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 150,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.draft_qin.0",
+          "op": "item",
+          "definitionId": "item.draft",
+          "owner": "actor",
+          "quantity": 1
+        },
+        {
+          "id": "effect.draft_qin.1",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "units": 2
+        },
+        {
+          "id": "effect.draft_qin.2",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 8
+        },
+        {
+          "id": "effect.draft_qin.3",
+          "op": "fact",
+          "factType": "drafted",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.draft_score",
+      "name": "对着静谱起草",
+      "description": "没有旧琴在手，纸上的拍子先落下半截。未成之曲，也可以再拿去弹。",
+      "category": "music",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        },
+        {
+          "name": "score",
+          "kind": "item",
+          "tags": [
+            "score"
+          ],
+          "usage": "exclusive_tool"
+        }
+      ],
+      "duration": 150,
+      "conditions": [],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.draft_score.0",
+          "op": "item",
+          "definitionId": "item.draft",
+          "owner": "actor",
+          "quantity": 1
+        },
+        {
+          "id": "effect.draft_score.1",
+          "op": "practice",
+          "slot": "actor",
+          "skillId": "skill.music",
+          "units": 2
+        },
+        {
+          "id": "effect.draft_score.2",
+          "op": "fatigue",
+          "slot": "actor",
+          "units": 8
+        },
+        {
+          "id": "effect.draft_score.3",
+          "op": "fact",
+          "factType": "drafted",
+          "slot": "actor"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.visit_pavilion",
+      "name": "前往听雨亭",
+      "description": "沿河而行，听雨亭在桥的另一端。",
+      "category": "travel",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 60,
+      "conditions": [
+        {
+          "op": "not_location",
+          "value": "location.pavilion"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.visit_pavilion.47",
+          "op": "travel",
+          "location": "location.pavilion"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.visit_market",
+      "name": "前往青溪集",
+      "description": "茶肆开门，草药商正在摆摊。",
+      "category": "travel",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 60,
+      "conditions": [
+        {
+          "op": "not_location",
+          "value": "location.market"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.visit_market.48",
+          "op": "travel",
+          "location": "location.market"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.visit_study",
+      "name": "前往县学书院",
+      "description": "院中有人讲学，也有行医人暂歇。",
+      "category": "travel",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 60,
+      "conditions": [
+        {
+          "op": "not_location",
+          "value": "location.study"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.visit_study.49",
+          "op": "travel",
+          "location": "location.study"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.visit_garden",
+      "name": "前往青竹药园",
+      "description": "药香和炉火之间，还有一些待安排的事务。",
+      "category": "travel",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 60,
+      "conditions": [
+        {
+          "op": "not_location",
+          "value": "location.garden"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.visit_garden.50",
+          "op": "travel",
+          "location": "location.garden"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    },
+    {
+      "id": "action.visit_mountain",
+      "name": "走访山道",
+      "description": "城外的路上有机缘，也有尚未查明的风险。",
+      "category": "travel",
+      "slots": [
+        {
+          "name": "actor",
+          "kind": "character",
+          "tags": [
+            "player"
+          ],
+          "usage": "major_actor"
+        }
+      ],
+      "duration": 90,
+      "conditions": [
+        {
+          "op": "not_location",
+          "value": "location.mountain"
+        }
+      ],
+      "costs": [],
+      "effects": [
+        {
+          "id": "effect.visit_mountain.51",
+          "op": "travel",
+          "location": "location.mountain"
+        }
+      ],
+      "cancelPolicy": "release_unspent_keep_spent"
+    }
+  ]
+}

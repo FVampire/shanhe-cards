@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-21T06:39:49.316Z",
+  "device": {
+    "os": "win32 10.0.26100",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600KF"
+  },
+  "characters": 200,
+  "items": 2200,
+  "projects": 100,
+  "advance90MinutesMs": 48.13,
+  "serializeAndChecksumMs": 45.54,
+  "snapshotBytes": 1096741,
+  "scope": "单次 Node.js 规则压力测量，不代表浏览器 60fps、150 张卡片交互或 4ms 预算达标。"
+}

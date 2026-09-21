@@ -1,0 +1,52 @@
+{
+  "measuredAt": "2026-09-21T06:38:16.836Z",
+  "hardware": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600KF",
+    "logicalCpus": 16,
+    "memoryGB": 32,
+    "os": "win32 10.0.26100"
+  },
+  "scope": "Node 本地身份查询、存档序列化与完整校验；不是浏览器最慢帧或人工游玩时长",
+  "results": [
+    {
+      "runtime": 24,
+      "summary": 120,
+      "archive": 1000,
+      "bytes": 685526,
+      "importLimitBytes": 8388608,
+      "withinImportLimit": true,
+      "contactQuery": {
+        "p50Ms": 0.32,
+        "p95Ms": 0.42
+      },
+      "saveEnvelope": {
+        "p50Ms": 20.23,
+        "p95Ms": 26.43
+      },
+      "validateAndLoad": {
+        "p50Ms": 24.56,
+        "p95Ms": 37.31
+      }
+    },
+    {
+      "runtime": 32,
+      "summary": 120,
+      "archive": 10000,
+      "bytes": 6090790,
+      "importLimitBytes": 8388608,
+      "withinImportLimit": true,
+      "contactQuery": {
+        "p50Ms": 2.94,
+        "p95Ms": 3.5
+      },
+      "saveEnvelope": {
+        "p50Ms": 233.38,
+        "p95Ms": 338.17
+      },
+      "validateAndLoad": {
+        "p50Ms": 196.84,
+        "p95Ms": 227.42
+      }
+    }
+  ]
+}
