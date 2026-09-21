@@ -1,0 +1,104 @@
+import {chains,methods,places,roles,shortSeeds} from '../content/mortal';
+import {PLAYER,type World} from './model';
+import {knownVerbs,knownPlaces} from './mortal-discovery';
+import type {StackCard,StackVerb} from './mortal-model';
+
+const make=(id:string,name:string,kind:StackCard['kind'],aspects:string[],description:string,art='scroll',subtitle='一张手中之物'):StackCard=>({id,name,kind,aspects:['mortal',...aspects],description,art,subtitle,color:kind==='location'?'#b2936c':aspects.includes('person')?'#827453':kind==='work'?'#c7b274':kind==='event'?'#bf7970':'#768773'});
+const stages:Record<string,{names:string[];verbs:StackVerb[]}>={
+ CH01:{names:['用工告示','今夜的住处','一份短工约定'],verbs:['travel','talk','work']},
+ CH02:{names:['两种相似的叶子','分好的药材','待照护的病案'],verbs:['study','create','cultivate']},
+ CH03:{names:['雨前的萎叶','雨前采收委托','偏转的叶尖'],verbs:['study','work','study']},
+ CH04:{names:['有裂纹的旧琴','旧琴修补约定','修好的旧琴'],verbs:['study','create','talk']},
+ CH05:{names:['江上传来的残曲','缺失的一段曲','江上曲稿'],verbs:['talk','travel','create']},
+ CH06:{names:['两种县志','旧水道疑点','水道考辨手稿'],verbs:['study','travel','create']},
+ CH07:{names:['药师的旧疾','公开的旧病案','照护交接记录'],verbs:['cultivate','study','talk']},
+ CH08:{names:['云岫路况','一程同行的约定','山路分账单'],verbs:['talk','travel','talk']},
+ CH09:{names:['修法门路','待核验的注本','有限的学习约定'],verbs:['study','study','talk']},
+ CH10:{names:['初修运行说明','待校验的修持环境'],verbs:['study','cultivate']}
+};
+const completed=(w:World,id:string)=>(w.mortal.stages[id]??0)>=(chains.find(c=>c.id===id)?.stages.length??Infinity);
+export const focusId=(id:string,index:number)=>'thread.'+id+'.'+index;
+export function stageVerb(id:string,index:number):StackVerb{return stages[id]?.verbs[index]??'study';}
+export function actionVerb(actionId:string):StackVerb{return actionId.startsWith('travel.')?'travel':actionId==='rest'||['practice','correct','apply'].includes(actionId)?'cultivate':actionId==='work'||actionId==='relief'||actionId.startsWith('job.')?'work':actionId==='rent'||actionId==='food'||actionId.startsWith('social.')?'talk':'study';}
+
+// The deck is a pure projection of known, persisted state. Inspecting or dragging it never generates people or spends anything.
+export function mortalDeck(w:World):StackCard[]{
+ const m=w.mortal,here=w.entities[PLAYER].location!,cards:StackCard[]=[];
+ cards.push(make(PLAYER,w.entities[PLAYER].name,'entity',['player','character'],'此身只能同时参与一项行事。拖进动词，再投入你打算使用的人或物。','player','自身 · '+Math.floor(w.entities[PLAYER].ageMinutes/525600)+' 岁'));
+ for(const a of Object.values(m.assets)){
+  if(!a.quantity||a.status==='consumed'||a.status==='returned'||a.kind==='commitment'||a.kind==='work'||a.id.startsWith('MT'))continue;
+  if(a.ownerId!==PLAYER&&a.location!==here)continue;
+  const tags=a.id.startsWith('tool.')||a.id==='bag'?['tool','item']:a.kind==='method'?['reference','manual']:a.kind==='clue'?['clue']:['item'];
+  cards.push(make(a.id,a.name,'entity',tags,'来源：'+a.source+'。'+(tags.includes('tool')?'投入「谋生」可做力所能及的工作。':a.kind==='method'?'可在修持时作为校注，帮助纠正试行偏差。':'物品保留原有所有权。'),tags.includes('tool')?'work':a.kind==='method'?'book':'scroll','器物 · '+(a.ownerId===PLAYER?'自己所有':'他人所有')));
+ }
+ cards.push(make('means.money','钱文','entity',['currency'],'可以与青溪集投入「交游」备粮，与客舍洽谈续住。钱款只有正式开始时才会扣除。','coins',w.money+' 文 · 周转钱'));
+ if((m.stages.CH01??0)>=1||!m.discoveries)cards.push(make('intent.careful','谨慎的打算','intent',['approach'],'作为行事中的补充：选择多花时间、独自核查或降低承诺的办法。不同的事物会有不同回应。','insight','打算 · 可补入槽位'));
+ if(m.foodDays)cards.push(make('supply.food','干粮','entity',['supply'],m.foodDays+' 日口粮；日常先用存粮，远途按约消耗。','herb','食物 · '+m.foodDays+' 日'));
+ if(m.paidUntil>0)cards.push(make('shelter.bed','客舍铺位','entity',['shelter'],m.paidUntil>w.tick?'已付至第 '+(Math.floor(m.paidUntil/1440)+1)+' 日；与自身投入修养即可回客舍歇息，路程一并计时。':'铺位已到期。可与客舍交游续住，或在客舍谋生换取食宿。','pavilion',m.paidUntil>w.tick?'住处 · 已付费':'住处 · 待续付'));
+ const known=places.filter(l=>knownPlaces(w).includes(l.id));
+ for(const l of known)cards.push(make(l.id,l.name,'location',['place'],l.description+'。放进「行游」可前往；来到此地后，留意新出现的人和物。',l.id.split('.')[1],l.id===here?'此刻所在':'已知地点'));
+ for(const c of chains){
+  const index=m.stages[c.id]??0,stage=c.stages[index];if(!stage||!c.requires.every(id=>completed(w,id)))continue;
+  if(c.location!==here&&index===0)continue;
+  cards.push(make(focusId(c.id,index),stages[c.id].names[index],'entity',['opportunity','clue',stageVerb(c.id,index)],stage.text+' '+({study:'可以研习其中的疑点。',talk:'可把它作为交游的话头。',create:'已有的准备，可以尝试创作。',work:'这是一项可以完成的工作。',cultivate:'这件事需要投入时间修养。',travel:'可以带着它行游调查。'}[stageVerb(c.id,index)]),'scroll','线索 · '+places.find(l=>l.id===c.location)!.name));
+ }
+ for(const p of Object.values(m.people))if(p.worldStatus==='local'&&p.location===here&&p.simulationTier!=='A')cards.push(make(p.id,p.name,'entity',['person','character',p.role],p.knownStatus+'。'+p.goal+'。'+(m.relationships[p.id]?.facts.at(-1)??'尚未有深入往来。'),'teacher',roles.find(r=>r.id===p.role)?.name??'相识'));
+ for(const work of w.works)cards.push(make(work.id,work.title,'work',['work','achievement'], '亲手做成的事。投入「谋生」可继续承接这一门技艺的工作。','scroll','凡人成果 · '+w.entities[PLAYER].name));
+ if(completed(w,'CH09'))for(const method of methods)cards.push(make(method.id,method.name,'entity',['method'],method.requirement+'。先研习选择并理解，再修养试行；加注本纠错，加相应地点做现实应用。','lotus',m.method===method.id?'当前修法 · 理解 '+m.understanding+'/2 · 实践 '+Math.min(3,m.practice)+'/3':'可靠方法 · 尚待选择'));
+ if(here==='location.pharmacy')cards.push(make('reference.atlas','公开草木图册','entity',['reference','atlas'],'药铺允许借阅的基础辨药图册。可独自研习，也可补入药材辨认的行动。','book','公开借阅 · 仅在药铺'));
+ for(const e of Object.values(m.shortEvents))if(e.state==='open'){const d=shortSeeds.find(s=>s.id===e.id)!;cards.push(make(e.id,d.name,'event',['event'],'与此前经历有关的小事。打开卡牌，看看该如何回应。','event','身边小事 · 尚待回应'));}
+ return cards;
+}
+
+export type StackRecipe={actionId:string;choice:string;errors:string[]};
+export function resolveMortalStack(w:World,verb:StackVerb,b:Record<string,string>):StackRecipe|null{
+ if(!knownVerbs(w).includes(verb))return null;
+ const cards=mortalDeck(w),actor=cards.find(c=>c.id===b.actor),focus=cards.find(c=>c.id===b.focus),extra=cards.find(c=>c.id===b.supplement);
+ if(actor?.id!==PLAYER||Object.values(b).some(id=>!cards.some(c=>c.id===id))||new Set(Object.values(b)).size!==Object.values(b).length||Object.keys(b).some(k=>!['actor','focus','supplement'].includes(k)))return null;
+ if(!focus)return verb==='cultivate'&&!extra?{actionId:'rest',choice:'',errors:[]}:null;
+ const result=(actionId:string,choice='',errors:string[]=[]):StackRecipe=>({actionId,choice,errors});
+ if(focus.id.startsWith('thread.')){
+  const [,id,indexText]=focus.id.split('.'),index=Number(indexText),c=chains.find(c=>c.id===id)!;
+  if(index!==(w.mortal.stages[id]??0))return null;
+  if(id==='CH01'&&index===0){if(verb==='travel'&&!extra)return result(id,'notice');if(verb==='talk'&&!extra)return result(id,'ask');return null;}
+  if(id==='CH01'&&index===1){if(verb==='work'&&!extra)return result(id,'relief');if(verb==='talk'&&(!extra||extra.id==='means.money'))return result(id,'rent');return null;}
+  if(id==='CH09'&&index===0){if(verb==='study'&&(!extra||extra.id==='means.money'))return result(id,'independent');if(verb==='talk')return result(id,extra?.aspects.includes('person')||extra?.id==='intent.careful'?'mentor':'sect');return null;}
+  if(verb!==stageVerb(id,index))return null;
+  if(extra&&!['intent.careful','reference.atlas','means.money'].includes(extra.id)&&!extra.aspects.includes('person')&&!extra.aspects.includes('tool'))return null;
+  const alternate=extra?.id==='intent.careful'||extra?.id==='reference.atlas';
+  return result(id,c.stages[index].choices[alternate?1:0].id);
+ }
+ if(focus.kind==='location'){
+  if(verb==='travel'&&!extra)return result('travel.'+focus.id);
+  if(verb==='talk'&&focus.id==='location.inn'&&(!extra||extra.id==='means.money'))return result('rent');
+  if(verb==='work'&&focus.id==='location.inn'&&!extra)return result('relief');
+  if(verb==='talk'&&focus.id==='location.market'&&extra?.id==='means.money')return result('food');
+  if(verb==='work'&&focus.id==='location.market'&&(!extra||extra.id==='intent.careful'))return result('work',extra?'light':'');
+  return null;
+ }
+ if(focus.aspects.includes('tool')&&verb==='work'&&(!extra||extra.id==='intent.careful'))return result('work',extra?'light':'');
+ if(focus.aspects.includes('shelter')&&verb==='cultivate'&&!extra)return result('rest');
+ if(focus.aspects.includes('atlas')&&verb==='study'&&!extra)return result('medicine');
+ if(focus.kind==='work'&&verb==='work'&&!extra){const id=focus.id.replace('work.','');if(chains.some(c=>c.id===id&&c.skill))return result('job.'+id);}
+ if(focus.aspects.includes('person')&&verb==='talk'&&!extra)return result('social.'+focus.id);
+ if(focus.aspects.includes('method')){
+  const method=methods.find(d=>d.id===focus.id)!;
+  if(verb==='study'&&!extra)return result(w.mortal.method===method.id?'understand':'method',w.mortal.method===method.id?'':method.id);
+  if(verb==='cultivate'){
+   const errors=w.mortal.method===method.id?[]:['先将这张方法卡投入研习，确定当前修法。'];
+   if(!extra)return result('practice','',errors);
+   if(extra.id==='public.manual')return result('correct','',errors);
+   if(extra.kind==='location')return result('apply','',[...errors,...(extra.id===method.location?[]:['该方法的应用目标是'+places.find(p=>p.id===method.location)!.name+'。'])]);
+  }
+ }
+ return null;
+}
+
+export function lockedMortalCards(w:World):Set<string>{return new Set(Object.values(w.mortal.cardRuns??{}).filter(r=>!r.collected&&r.state!=='cancelled').flatMap(r=>r.state==='running'?Object.values(r.bindings):r.outputs.map(c=>c.id)));}
+export function finishStackRun(w:World,id:string,cancelled=false){
+ const run=w.mortal.cardRuns?.[id];if(!run)return;
+ run.state=cancelled?'cancelled':'completed';if(cancelled)return;
+ const after=mortalDeck(w),bound=new Set(Object.values(run.bindings)),before=new Set(run.beforeIds);
+ run.outputs=after.filter(c=>bound.has(c.id)||!before.has(c.id));
+ run.summary=w.log.filter(l=>l.tick===w.tick&&l.kind!=='warning').slice(-4).map(l=>l.text).join(' ');
+}

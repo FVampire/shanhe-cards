@@ -69,6 +69,7 @@ export class GameSession{
   const next=Math.min(...Object.values(this.world.projects).filter(p=>p.state==='running').map(p=>p.dueTick),...(this.world.mortal.task?[this.world.mortal.task.dueTick]:[]),this.world.mortal.mode==='chapter'&&this.world.mortal.task?this.world.mortal.task.dueTick:this.world.tick+180);
   this.pauses.delete('user');this.advance(next-this.world.tick);this.pauses.add('user');this.publish();
  }
+ startStack(verb:import('../domain/mortal-model').StackVerb,bindings:Record<string,string>){const result=this.command({type:'MortalStack',verb,bindings});if(result.ok&&!document.hidden){this.pauses.delete('user');this.publish();}return result;}
  start(actionId:string,bindings:Record<string,string>){
   const result=this.command({type:'StartAction',actionId,bindings});
   if(result.ok&&!document.hidden){this.pauses.delete('user');this.publish();}return result;

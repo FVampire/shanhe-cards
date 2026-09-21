@@ -2,6 +2,7 @@ import { z } from 'zod';
 const coordinate=z.number().finite().min(-10000).max(10000);
 export const PointSchema=z.object({x:coordinate,y:coordinate}).strict();
 export const TabletopSchema=z.object({
+ creationDraft:z.object({step:z.enum(['name','origin','talent','ready']),name:z.string().max(16),origin:z.enum(['traveller','herbalist','artisan','scribe','musician']),talent:z.enum(['steady','observant','focused']),acquaintance:z.boolean()}).strict().optional(),
  accessibility:z.object({fontSize:z.union([z.literal(100),z.literal(115),z.literal(130)]),reducedMotion:z.boolean()}).strict().optional(),
  positions:z.record(z.string(),PointSchema),
  camera:z.object({x:coordinate,y:coordinate,zoom:z.number().finite().min(.45).max(1.5)}).strict(),

@@ -10,7 +10,14 @@ export const PersonSchema=z.object({
  policy:z.enum(['immediate','timed','event','permanent'])
 }).strict();
 export type Person=z.infer<typeof PersonSchema>;
+export const StackVerbSchema=z.enum(['study','talk','create','work','cultivate','travel']);
+export type StackVerb=z.infer<typeof StackVerbSchema>;
+export const StackCardSchema=z.object({id:z.string(),name:z.string(),kind:z.enum(['entity','location','intent','work','insight','event']),aspects:z.array(z.string()),description:z.string(),art:z.string(),subtitle:z.string(),color:z.string()}).strict();
+export type StackCard=z.infer<typeof StackCardSchema>;
+export const StackRunSchema=z.object({id:z.string(),actionId:z.string(),choice:z.string(),verb:StackVerbSchema,bindings:z.record(z.string(),z.string()),startedTick:n,dueTick:n,state:z.enum(['running','completed','cancelled']),collected:z.boolean(),inputs:z.array(StackCardSchema),outputs:z.array(StackCardSchema),beforeIds:z.array(z.string()),name:z.string(),description:z.string(),cost:n,reward:n,summary:z.string()}).strict();
 export const MortalSchema=z.object({
+ discoveries:z.object({verbs:z.array(StackVerbSchema),places:z.array(z.string())}).strict().optional(),
+ cardRuns:z.record(z.string(),StackRunSchema).optional(),
  relationships:z.record(z.string(),z.object({personId:z.string(),kind:z.enum(['acquaintance','colleague','guide']),trust:z.number().int().min(-100).max(100),facts:z.array(z.string()).max(12)}).strict()),
  assets:z.record(z.string(),z.object({id:z.string(),kind:z.enum(['item','method','clue','commitment','work']),name:z.string(),ownerId:z.string(),source:z.string(),quantity:n,location:z.string(),status:z.enum(['available','reserved','consumed','returned'])}).strict()),
  ledger:z.array(z.object({id:z.string(),tick:n,from:z.string(),to:z.string(),amount:n,reason:z.string()}).strict()),
@@ -30,6 +37,8 @@ export function freshMortal(mode:'chapter'|'legacy'='chapter'):Mortal{return {re
 export type MortalCommand=
  | {type:'CreateMortal';name:string;origin:typeof origins[number];talent:'steady'|'observant'|'focused';acquaintance:boolean}
  | {type:'MortalAction';actionId:string;choice:string}
+ | {type:'MortalStack';verb:StackVerb;bindings:Record<string,string>}
+ | {type:'MortalCollect';runId:string}
  | {type:'CancelMortal'}
  | {type:'MortalFocus';focus:'life'|'work'|'path'}
  | {type:'MortalContact';personId:string;operation:'bookmark'|'letter'|'meet'}

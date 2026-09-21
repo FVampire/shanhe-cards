@@ -4,12 +4,14 @@ import { type Person,type MortalCommand,freshMortal } from './mortal-model';
 import { samplePpm } from './random';
 import { requireRule } from './actions';
 import { log } from './world';
+import {mortalDeck,resolveMortalStack,lockedMortalCards,finishStackRun} from './mortal-cards';
+import {discoverFromExperience,verbNames} from './mortal-discovery';
 const DAY=1440;
 export const isMortal=(w:World)=>w.mortal.mode==='chapter';
 const flag=(w:World,id:string)=>{if(!w.mortal.flags.includes(id))w.mortal.flags.push(id);};
 export const done=(w:World,id:string)=>w.mortal.flags.includes(id);
 export const chainDone=(w:World,id:string)=>!!chains.find(c=>c.id===id&& (w.mortal.stages[id]??0)>=c.stages.length);
-const free=(w:World)=>{requireRule(!w.mortal.task&&!Object.values(w.projects).some(p=>p.state==='running'),'ACTOR_BUSY','你正在另一项行事中，请先完成或取消。');};
+const free=(w:World)=>{requireRule(!lockedMortalCards(w).has(PLAYER),'ACTOR_BUSY','先收取已完成行事中的自身卡。');requireRule(!w.mortal.task&&!Object.values(w.projects).some(p=>p.state==='running'),'ACTOR_BUSY','你正在另一项行事中，请先完成或取消。');};
 function entry(w:World,from:string,to:string,amount:number,reason:string){const id='entry.'+(w.counters.entry=(w.counters.entry??0)+1);w.mortal.ledger.push({id,tick:w.tick,from,to,amount,reason});}
 function asset(w:World,id:string,kind:World['mortal']['assets'][string]['kind'],name:string,source:string,ownerId=PLAYER){w.mortal.assets[id]??={id,kind,name,source,ownerId,quantity:1,location:w.entities[PLAYER].location!,status:'available'};}
 const pay=(w:World,n:number)=>{requireRule(w.money>=n,'MISSING_REQUIREMENT','钱款不足，可先做公共短工或包食宿帮工。');w.money-=n;if(n)entry(w,PLAYER,'local.services',n,'实际支出');};
@@ -71,7 +73,12 @@ export function previewMortal(w:World,actionId:string,choice=''):MortalPreview{
   if(!c?.skill||!chainDone(w,id))out.errors.push('先完成该门技艺的独立成果。');
   if(m.workDay===Math.floor(w.tick/DAY)&&m.workCount>=2)out.errors.push('今日订单需求已满。');
   out.detail='材料 4 文开工消耗，完成得 18 文；当日最多两单。';
- }else if(actionId==='rest'){out.name='在住处歇息';out.minutes=360;out.fatigue=0;out.location='location.inn';if(m.paidUntil<w.tick+360)out.errors.push('住处需覆盖休息时间，先续住或参加包食宿帮工。');out.detail='恢复健康，减少 55 疲劳；已付期间不再扣租费。';}
+ }else if(actionId==='rest'){
+  const journey=p.location==='location.inn'?0:['location.mountain','location.temple'].includes(p.location??'')?180:20;
+  out.name=journey?'返回客舍歇息':'在住处歇息';out.minutes=360+journey;out.fatigue=0;
+  if(m.paidUntil<w.tick+out.minutes)out.errors.push('铺位需覆盖'+(journey?'返程和':'')+'休息时间，请先续住或参加包食宿帮工。');
+  out.detail=(journey?'先花 '+journey+' 分钟返回河埠客舍，再休息 360 分钟；无需另开行游。':'休息 360 分钟。')+'恢复健康，休息减少 55 疲劳'+(journey?'（赶路增加 2 疲劳）':'')+'；已付期间不再扣租费。';
+ }
  else if(actionId==='rent'){out.name='续住两日';out.minutes=10;out.cost=4;out.fatigue=0;out.location='location.inn';out.role='R01';out.detail='4 文支付两日铺位，在现有期限后顺延。';}
  else if(actionId==='food'){out.name='备下两日饭食';out.minutes=10;out.cost=4;out.fatigue=0;out.location='location.market';out.detail='两日食物按跨日结算，山路补给另有明确消耗。';}
  else if(actionId.startsWith('travel.')){const id=actionId.slice(7);out.name='前往'+places.find(l=>l.id===id)?.name;out.minutes=['location.mountain','location.temple'].includes(id)?180:20;out.fatigue=2;if(!places.some(l=>l.id===id))out.errors.push('未知地点');if(p.location===id)out.errors.push('已在这里。');out.detail='按安全路线出行，途经预约与生活费用照常结算。';}
@@ -89,7 +96,7 @@ export function previewMortal(w:World,actionId:string,choice=''):MortalPreview{
    if(actionId==='apply'&&(m.practice<3||!m.corrected))out.errors.push('须完成三次有效实践及一次纠错。');
    if(actionId==='apply'&&m.applied)out.errors.push('该方法的首次应用已经记录，可继续生活或另学方法。');
   }
- }else out.errors.push('未知行动。');
+ }else if(actionId.startsWith('social.')){const person=m.people[actionId.slice(7)];out.name='与'+(person?.name??'故人')+'小坐';out.minutes=30;out.fatigue=0;out.location=person?.location??null;out.detail='花些时间交换近况，保留重逢记忆。信任来自实际履约。';if(!person||person.worldStatus!=='local'||person.pins.some(r=>r.minimumTier==='L2'))out.errors.push('对方不在现场或正忙。');}else out.errors.push('未知行动。');
  if((m.talent==='steady'&&actionId==='practice')||(m.talent==='observant'&&actionId==='medicine')||(m.talent==='focused'&&actionId==='understand'))out.minutes=Math.max(30,out.minutes-30);
  if((actionId==='work'||actionId==='relief')&&p.location==='location.inn')out.location=p.location;
  if(actionId==='job.CH05'&&p.location==='location.teahouse')out.location=p.location;
@@ -103,6 +110,7 @@ function start(w:World,actionId:string,choice:string){
  free(w);const m=w.mortal,preview=previewMortal(w,actionId,choice);requireRule(!preview.errors.length,'MISSING_REQUIREMENT',preview.errors.join(' '));
  const id='mortal.task.'+(w.counters.mortalTask=(w.counters.mortalTask??0)+1);const people:Person[]=[];
  if(preview.role){const p=meetRole(w,preview.role,id,w.entities[PLAYER].location!);people.push(p);pin(p,id,'行动占用','L2');}
+ if(actionId.startsWith('social.')){const p=m.people[actionId.slice(7)];people.push(p);pin(p,id,'行动占用','L2');p.simulationTier='L2';}
  pay(w,preview.cost);
  const chainIndex=m.stages[actionId]??0;
  if(actionId==='CH04'&&chainIndex===0){asset(w,'object.old-qin','item','待修旧琴',id,people[0]!.id);pin(people[0],'object.old-qin','物品所有权','A');}
@@ -121,11 +129,11 @@ function settleContract(w:World,id:string,state:'completed'|'cancelled'|'expired
  entry(w,id,state==='completed'?PLAYER:'regional.work',c.escrow,state);if(state==='completed')w.money+=c.escrow;else w.mortal.bank+=c.escrow;if(w.mortal.assets[id])w.mortal.assets[id].status='returned';
  c.escrow=0;c.state=state;c.receipt=id+'/'+state;w.receipts[c.receipt]=state;unpin(w,id);
 }
-export function cancelMortal(w:World){const t=w.mortal.task;requireRule(t,'MISSING_REQUIREMENT','没有正在进行的行动。');if(t!.contractId)settleContract(w,t!.contractId,'cancelled');unpin(w,t!.id);for(const id of t!.personIds){remember(w.mortal.people[id],'约定已提前取消，未领取报酬。');releasePerson(w,id);}w.receipts[t!.id]='cancelled';w.mortal.task=null;w.mortal.plan=0;if(w.mortal.assets['object.old-qin']?.status==='reserved')w.mortal.assets['object.old-qin'].status='available';log(w,'已取消；已投入的时间与开工材料不返还，未付报酬归还委托方，当前阶段可重试。','warning');}
+export function cancelMortal(w:World){const t=w.mortal.task;requireRule(t,'MISSING_REQUIREMENT','没有正在进行的行动。');if(t!.contractId)settleContract(w,t!.contractId,'cancelled');unpin(w,t!.id);for(const id of t!.personIds){remember(w.mortal.people[id],'约定已提前取消，未领取报酬。');releasePerson(w,id);}finishStackRun(w,t!.id,true);w.receipts[t!.id]='cancelled';w.mortal.task=null;w.mortal.plan=0;if(w.mortal.assets['object.old-qin']?.status==='reserved')w.mortal.assets['object.old-qin'].status='available';log(w,'已取消；已投入的时间与开工材料不返还，未付报酬归还委托方，当前阶段可重试。','warning');}
 function finish(w:World){
  const m=w.mortal,t=m.task;if(!t||w.receipts[t.id])return;const p=w.entities[PLAYER],a=t.actionId,choice=t.choice,chain=chains.find(c=>c.id===a),index=m.stages[a]??0;
  if(['practice','correct','understand','apply'].includes(a)&&(p.health<40||p.fatigue>60)){cancelMortal(w);log(w,'修持中身体或专注已不适合，停止本次练习；有效进度未增加，请调养后再试。','warning');return;}
- const fatigue=a==='rest'?0:a==='work'||a==='relief'?choice==='light'?6:18:a.startsWith('travel.')?2:['rent','food','method'].includes(a)?0:8;
+ const fatigue=a==='rest'?0:a==='work'||a==='relief'?choice==='light'?6:18:a.startsWith('travel.')?2:['rent','food','method'].includes(a)||a.startsWith('social.')?0:8;
  p.fatigue=Math.min(100,p.fatigue+fatigue);
  if(t.contractId)settleContract(w,t.contractId,'completed');
  if(chain){
@@ -145,7 +153,7 @@ function finish(w:World){
  }else if(a==='work'||a==='relief'||a.startsWith('job.')){
   if(m.workDay!==Math.floor(w.tick/DAY)){m.workDay=Math.floor(w.tick/DAY);m.workCount=0;}m.workCount++;flag(w,'income');
   if(a==='relief'){m.foodDays+=2;m.paidUntil=Math.max(w.tick,m.paidUntil)+2*DAY;flag(w,'shelter');}
- }else if(a==='rest'){p.fatigue=Math.max(0,p.fatigue-55);p.health=Math.min(100,p.health+10);}
+ }else if(a==='rest'){p.fatigue=Math.max(0,p.fatigue+(p.location==='location.inn'?0:2)-55);p.health=Math.min(100,p.health+10);p.location='location.inn';}
  else if(a==='rent'){m.paidUntil=Math.max(w.tick,m.paidUntil)+2*DAY;flag(w,'shelter');}
  else if(a==='food')m.foodDays+=2;
  else if(a.startsWith('travel.'))p.location=a.slice(7);
@@ -155,9 +163,11 @@ function finish(w:World){
  else if(a==='practice'){m.practice++;log(w,m.practice===1?'试行发现呼吸与注意力不同步。请比对注本，纠正后再验证。':'这一次，变化可以依照步骤再次出现。','success');}
  else if(a==='correct')m.corrected=true;
  else if(a==='apply'){m.applied=true;flag(w,'applied.'+m.method);log(w,methods.find(x=>x.id===m.method)!.application+'：你知道第一步踩在哪里。普通技艺、道行和寿数未因此改变。','success');}
- for(const id of t.personIds){const person=m.people[id];remember(person,'共同完成：'+(chain?.name??a));if(person.role!=='R02'){const edge=m.relationships[id]??={personId:id,kind:'acquaintance',trust:0,facts:[]};edge.trust=Math.min(100,edge.trust+1);edge.kind=chain?.skill?'colleague':person.role==='R10'?'guide':edge.kind;edge.facts.push('完成约定：'+(chain?.name??a));edge.facts=edge.facts.slice(-12);log(w,person.name+'因你实际完成这次约定，更信任了一分。');}if(person.role!=='R02')person.contact='可寄信至青溪'+(roles.find(r=>r.id===person.role)?.name??'客舍');person.lastSeen=w.tick;person.knownStatus='最后在'+places.find(l=>l.id===person.location)?.name+'相见';if(chain?.work&&chainDone(w,a)){person.keyMemories.push('参与见证《'+chain.work+'》');pin(person,'work.'+a,'作品来源','A');}}
+ for(const id of t.personIds){const person=m.people[id];remember(person,'共同完成：'+(chain?.name??a));if(person.role!=='R02'&&!a.startsWith('social.')){const edge=m.relationships[id]??={personId:id,kind:'acquaintance',trust:0,facts:[]};edge.trust=Math.min(100,edge.trust+1);edge.kind=chain?.skill?'colleague':person.role==='R10'?'guide':edge.kind;edge.facts.push('完成约定：'+(chain?.name??a));edge.facts=edge.facts.slice(-12);log(w,person.name+'因你实际完成这次约定，更信任了一分。');}if(person.role!=='R02')person.contact='可寄信至青溪'+(roles.find(r=>r.id===person.role)?.name??'客舍');person.lastSeen=w.tick;person.knownStatus='最后在'+places.find(l=>l.id===person.location)?.name+'相见';if(chain?.work&&chainDone(w,a)){person.keyMemories.push('参与见证《'+chain.work+'》');pin(person,'work.'+a,'作品来源','A');}}
  unpin(w,t.id);w.receipts[t.id]='completed';m.task=null;for(const id of t.personIds)releasePerson(w,id);
  log(w,'「'+(chain?.stages[index]?.name??a)+'」完成，人物与占用已结清。','success');
+ for(const verb of discoverFromExperience(w))log(w,'你发现了一种新的行事方式：「'+verbNames[verb]+'」。','success');
+ finishStackRun(w,t.id);
  if(!m.completed&&done(w,'income')&&m.paidUntil>w.tick&&w.works.length>0&&m.flags.some(f=>f.startsWith('applied.'))){m.completed=true;log(w,'凡尘篇回顾：有可维持的食宿，有亲手做成的事，有可靠修法与首次应用。你可以留在青溪继续生活。','success');}
 }
 export function mortalDeadline(w:World,target:number){const m=w.mortal;return Math.min(target,...[m.task?.dueTick,...Object.values(m.messages).filter(x=>x.state==='travelling').map(x=>x.dueTick),...Object.values(m.people).flatMap(p=>[p.departAt,p.returnAt])].filter((n):n is number=>typeof n==='number'&&n>w.tick));}
@@ -180,7 +190,7 @@ export function tickMortal(w:World){
   if(eligible&&!m.shortEvents[seed.id])m.shortEvents[seed.id]={id:seed.id,state:'open',choice:null,personId:null,createdTick:w.tick};
  }
  if(interruption){m.plan=0;return true;}
- if(m.plan>0&&!m.task){
+ if(m.plan>0&&!m.task&&!lockedMortalCards(w).has(PLAYER)){
   if(w.entities[PLAYER].fatigue>=m.planStopFatigue||w.entities[PLAYER].health<50||m.foodDays<1||m.paidUntil<w.tick+360||Object.values(m.shortEvents).some(e=>e.state==='open')){m.plan=0;log(w,'长期安排暂停：请检查食宿、身体或待处理消息。');}
   else {const pre=previewMortal(w,'work','light');if(pre.errors.length){m.plan=0;log(w,'长期安排暂停：'+pre.errors.join(' '));}else{m.plan--;start(w,'work','light');}}
  }
@@ -191,12 +201,20 @@ export function mortalCommand(w:World,c:MortalCommand){
  if(c.type==='CreateMortal'){
   requireRule(!m.created,'ALREADY_SETTLED','出身已经确定。');requireRule(c.name.trim().length>0&&c.name.trim().length<=16,'MISSING_REQUIREMENT','姓名需为 1—16 个字。');
   const b=backgrounds.find(x=>x.id===c.origin);requireRule(b&&['steady','observant','focused'].includes(c.talent),'MISSING_REQUIREMENT','未知出身或天赋');
-  m.created=true;m.origin=c.origin;m.talent=c.talent;w.entities[PLAYER].name=c.name.trim();w.entities[PLAYER].description=b!.name+'，成年后独自抵达青溪。';w.entities[PLAYER].tags=['player'];if(b!.skill)m.skills[b!.skill]=1;
+  m.created=true;m.discoveries={verbs:['travel'],places:['location.market']};m.origin=c.origin;m.talent=c.talent;w.entities[PLAYER].name=c.name.trim();w.entities[PLAYER].description=b!.name+'，成年后独自抵达青溪。';w.entities[PLAYER].tags=['player'];if(b!.skill)m.skills[b!.skill]=1;
   if(c.acquaintance&&c.origin!=='traveller'){const r=({herbalist:'R08',artisan:'R05',scribe:'R06',musician:'R07'} as Record<string,string>)[c.origin];const p=meetRole(w,r,'background');if(p.origin==='resident')m.population.embodied--;else m.population.visitors--;p.origin='background';p.anchors[0]='曾与你同业学习，有一面旧缘';p.contact='寄信至原籍同业处';p.worldStatus='travelling';p.location='hometown';p.knownStatus='旧相识，目前在外地，可通信';p.returnAt=7*DAY;p.departAt=null;p.simulationTier='L1';p.retentionClass='important';m.relationships[p.id]={personId:p.id,kind:'acquaintance',trust:1,facts:['在原籍曾同业学习，现可通信']};}
   asset(w,'tool.'+c.origin,'item',b!.tool,'background');if(c.origin!=='traveller')asset(w,'bag','item','个人包袱','background');flag(w,'tool.'+c.origin);log(w,'你带着'+b!.tool+'、24 文和两日干粮来到青溪。');return;
  }
  requireRule(m.created,'MISSING_REQUIREMENT','请先选择出身。');
- if(c.type==='MortalAction')start(w,c.actionId,c.choice);
+ if(c.type==='MortalStack'){
+  const recipe=resolveMortalStack(w,c.verb,c.bindings);requireRule(recipe&&!recipe.errors.length,'MISSING_REQUIREMENT',recipe?.errors.join(' ')||'这些卡牌尚不能组成行动。');
+  requireRule(!Object.values(c.bindings).some(id=>lockedMortalCards(w).has(id)),'ACTOR_BUSY','投入的卡牌仍被占用或等待收取。');
+  const before=mortalDeck(w),pre=previewMortal(w,recipe!.actionId,recipe!.choice);
+  start(w,recipe!.actionId,recipe!.choice);const task=m.task!;
+  (m.cardRuns??={})[task.id]={id:task.id,actionId:task.actionId,choice:task.choice,startedTick:task.startedTick,dueTick:task.dueTick,verb:c.verb,bindings:{...c.bindings},state:'running',collected:false,inputs:before.filter(x=>Object.values(c.bindings).includes(x.id)),outputs:[],beforeIds:before.map(x=>x.id),name:pre.name,description:pre.detail,cost:pre.cost,reward:pre.reward,summary:''};
+ }else if(c.type==='MortalCollect'){
+  const run=m.cardRuns?.[c.runId];requireRule(run?.state==='completed','MISSING_REQUIREMENT','行事尚未完成。');run!.collected=true;
+ }else if(c.type==='MortalAction')start(w,c.actionId,c.choice);
  else if(c.type==='CancelMortal')cancelMortal(w);
  else if(c.type==='MortalFocus'){requireRule(['life','work','path'].includes(c.focus),'MISSING_REQUIREMENT','未知目标');m.focus=c.focus;}
  else if(c.type==='MortalPlan'){requireRule(Number.isInteger(c.days)&&c.days>=0&&c.days<=7&&Number.isInteger(c.stopFatigue)&&c.stopFatigue>=20&&c.stopFatigue<=70,'MISSING_REQUIREMENT','安排 0—7 次工作，疲劳阈值 20—70。');requireRule(done(w,'income'),'MISSING_REQUIREMENT','先实际完成一次劳动。');m.plan=c.days;m.planStopFatigue=c.stopFatigue;tickMortal(w);}
@@ -211,6 +229,7 @@ export function mortalCommand(w:World,c:MortalCommand){
 }
 export function assertMortal(w:World){
  const m=w.mortal;
+ for(const [id,r] of Object.entries(m.cardRuns??{})){if(id!==r.id||r.state==='running'&&m.task?.id!==id||r.state==='completed'&&w.receipts[id]!=='completed')throw new Error('卡牌行事状态不一致');}
  for(const [id,a]of Object.entries(m.assets)){if(a.id!==id)throw new Error('物品索引不一致');if(a.ownerId!==PLAYER&&!m.people[a.ownerId])throw new Error('物品所有者丢失');}
  for(const [id,p]of Object.entries(m.people)){if(p.id!==id)throw new Error('人物身份索引不一致');if(p.worldStatus!=='local'&&p.simulationTier==='L2')throw new Error('远方人物不能现场行动');for(const pin of p.pins){if(pin.ownerId.startsWith('mortal.task.')&&m.task?.id!==pin.ownerId)throw new Error('行动引用悬空');if(pin.ownerId.startsWith('contract.')&&m.contracts[pin.ownerId]?.state!=='active')throw new Error('合同保护未结清');if(pin.ownerId.startsWith('message.')&&m.messages[pin.ownerId]?.state!=='travelling')throw new Error('消息保护未结清');if(pin.ownerId.startsWith('work.')&&!w.works.some(x=>x.id===pin.ownerId))throw new Error('作品引用悬空');if(pin.ownerId.startsWith('object.')&&!m.assets[pin.ownerId])throw new Error('所有权引用悬空');}}
  for(const edge of Object.values(m.relationships))if(!m.people[edge.personId])throw new Error('关系身份悬空');

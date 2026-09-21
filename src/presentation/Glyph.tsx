@@ -1,6 +1,12 @@
 import { CardArt } from './Art';
 export function Glyph({kind}:{kind:string}){
  const paths:Record<string,string[]>={
+ coins:['M30 13a20 20 0 1 0 0 40 20 20 0 1 0 0-40','M24 27h12v12H24Z','M50 27a20 20 0 1 1-23 29M49 41h10v12H48'],
+ inn:['M10 32 40 10 70 32M17 29v38h46V29M8 68h64','M29 67V43h22v24M24 30h10v8H24Zm22 0h10v8H46Z'],
+ pharmacy:['M13 65V29h54v36ZM8 29 18 15h44l10 14M8 68h64','M27 42h26v17H27ZM35 38h10M40 44v12m-6-6h12'],
+ workshop:['M12 65V32l28-18 28 18v33H12Z','M23 56h34M30 55l6-17h16l-5 17M31 39l-8-8 7-7 10 9M48 26l10 7'],
+ temple:['M9 32 40 12 71 32H9ZM16 37h48v27H16ZM8 69h64','M26 40v24m28-24v24M34 64V47h12v17M36 8h8'],
+ teahouse:['M15 29h43v24q0 15-22 15T15 53V29Z','M58 34h7q14 13-7 19M10 72h55M25 23q-9-7 0-15m14 15q-9-7 0-15m14 15q-9-7 0-15'],
  pavilion:['M9 32 40 12 71 32 60 29H20Z','M21 31v29m38-29v29M12 61h56M28 34v25m24-25v25M9 68h62'],
  market:['M13 32h54v31H13Z','M8 31 17 15h46l9 16M11 32q7 10 15 0 7 10 14 0 8 10 15 0 7 10 14 0','M26 63V46h16v17m8-17h9v10h-9M7 69h66'],
  study:['M10 35 40 18 70 35H10Zm8 2v28m44-28v28M7 67h66','M28 41q6-4 12 1v18q-6-4-12-1Zm12 1q6-5 12-1v18q-6-3-12 1M35 12h10'],
@@ -19,4 +25,4 @@ export function Glyph({kind}:{kind:string}){
  const lines=paths[kind]??paths.book;
  return <svg viewBox="0 0 80 80" className="glyph" aria-hidden="true"><g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{lines.map((d,i)=><path d={d} key={i}/>)}</g></svg>;
 }
-export function Illustration({kind}:{kind:string}){return ['place','pavilion','market','study','garden','mountain','event','insight'].includes(kind)?<Glyph kind={kind}/>:<CardArt kind={kind}/>;}
+export function Illustration({kind}:{kind:string}){return ['coins','work','inn','pharmacy','workshop','temple','teahouse','place','pavilion','market','study','garden','mountain','event','insight','lotus','book'].includes(kind)?<Glyph kind={kind}/>:<CardArt kind={kind}/>;}

@@ -1,3 +1,5 @@
+import {chapter,mortalCards,desktopProjects,stackSlots} from './mortal-tabletop';
+import {resolveMortalStack,lockedMortalCards} from '../domain/mortal-cards';
 import { content,actionById } from '../content';
 import { PLAYER,type World,type Entity,type Project } from '../domain/model';
 import { busy,locationOf } from '../domain/world';
@@ -17,8 +19,9 @@ export const verbs:{id:VerbId;name:string;symbol:string;color:string;description
  {id:'travel',name:'行游',symbol:'compass',color:'#b79260',description:'一段路程，一处故地，或一个尚未谋面的人。',hint:'放入自己，再放入一个地点。出行同样占用时间。',position:{x:910,y:590}}
 ];
 export type TableCard={id:string;name:string;kind:'entity'|'location'|'intent'|'work'|'insight'|'event';subtitle:string;description:string;art:string;aspects:string[];color:string;entity?:Entity};
-export const aspectNames:Record<string,string>={player:'自身',herbalist:'药理',teacher:'音律·师友',physician:'医者',instrument:'乐器',score:'曲谱',history:'地方学问',recipe:'药方',breath:'调息法',material:'药材',medicine:'疗伤',garden:'药圃',furnace:'丹炉',character:'人物',item:'器物',facility:'设施',place:'地点',intention:'意愿',work:'作品',music:'音律',scholar:'学问',insight:'心得',event:'来信',draft:'残稿'};
+export const aspectNames:Record<string,string>={mortal:'凡尘',person:'相识',tool:'工具',opportunity:'契机',clue:'线索',currency:'钱文',approach:'打算',reference:'参照',manual:'注本',atlas:'图册',method:'修法',supply:'食物',shelter:'住处',achievement:'成果',study:'研习',talk:'交游',create:'创作',cultivate:'修养',travel:'行游',player:'自身',herbalist:'药理',teacher:'音律·师友',physician:'医者',instrument:'乐器',score:'曲谱',history:'地方学问',recipe:'药方',breath:'调息法',material:'药材',medicine:'疗伤',garden:'药圃',furnace:'丹炉',character:'人物',item:'器物',facility:'设施',place:'地点',intention:'意愿',work:'作品',music:'音律',scholar:'学问',insight:'心得',event:'来信',draft:'残稿'};
 export function cardsFor(w:World):TableCard[]{
+ if(chapter(w))return mortalCards(w);
  const here=locationOf(w,PLAYER);
  const entities=Object.values(w.entities).filter(e=>e.active&&e.quantity>0&&locationOf(w,e.id)===here).map((e):TableCard=>{
   const flavor=characterFlavor(e,w);
@@ -32,7 +35,7 @@ export function cardsFor(w:World):TableCard[]{
  return [...entities,...places,...works,...insights,...events,...intents];
 }
 export function projectVerb(p:Project):VerbId{
- const id=p.definitionId;
+ const id=p.definitionId;if(id.startsWith('mortal-run/'))return id.split('/')[1] as VerbId;
  if(['action.converse','action.duet','action.learn_breath','action.lore_talk','action.insist_duet'].includes(id))return 'talk';
  if(['action.compose','action.annotate','action.draft_qin','action.draft_score'].includes(id))return 'create';
  if(['action.perform','action.busk','action.gather','action.brew'].includes(id))return 'work';
@@ -45,6 +48,7 @@ export type Slot={id:string;name:string;hint:string;optional?:boolean;accept:(ca
 const tagged=(...tags:string[])=>(c:TableCard)=>tags.some(t=>c.aspects.includes(t));
 const actor:Slot={id:'actor',name:'自身',hint:'投入陆青禾',accept:c=>c.id===PLAYER,aspects:['player']};
 export function slotsFor(verb:VerbId,draft:Draft,cards:TableCard[],w:World):Slot[]{
+ if(chapter(w))return stackSlots(verb,draft,cards);
  const focus=cards.find(c=>c.id===draft.focus),companion=cards.find(c=>c.id===draft.companion);
  if(verb==='talk'){
   const slots:Slot[]=[actor,{id:'companion',name:'同伴',hint:'愿与你交往的人',accept:tagged('teacher','physician'),aspects:['teacher','physician']}];
@@ -68,6 +72,7 @@ export function slotsFor(verb:VerbId,draft:Draft,cards:TableCard[],w:World):Slot
  return slots;
 }
 export function resolveDraft(verb:VerbId,draft:Draft,cards:TableCard[],w:World):{actionId:string;bindings:Record<string,string>}|null{
+ if(chapter(w)){const r=resolveMortalStack(w,verb,draft);return r?{actionId:r.actionId,bindings:draft}:null;}
  const slots=slotsFor(verb,draft,cards,w);
  if(slots.some(s=>!s.optional&&(!draft[s.id]||!cards.some(c=>c.id===draft[s.id]&&s.accept(c)))))return null;
  const focus=cards.find(c=>c.id===draft.focus),companion=cards.find(c=>c.id===draft.companion);
@@ -123,10 +128,13 @@ export function fitSlot(card:TableCard,verb:VerbId,draft:Draft,cards:TableCard[]
 }
 export function initialCardPosition(card:TableCard,index:number):Point{
  const presets:Record<string,Point>={
+  'thread.CH01.0':{x:530,y:365},'means.money':{x:790,y:365},'intent.careful':{x:530,y:565},'supply.food':{x:660,y:565},
   [PLAYER]:{x:400,y:365},'character.teacher':{x:530,y:365},'instance.qin':{x:660,y:365},'instance.score':{x:790,y:365},
   'instance.breath':{x:480,y:605},'instance.history':{x:610,y:605},'instance.recipe':{x:740,y:605},'instance.herbs':{x:910,y:365}
  };
  if(presets[card.id])return presets[card.id];
+ if(card.id.startsWith('tool.'))return {x:660,y:365};
+ if(card.kind==='location'&&card.aspects.includes('mortal')){const i=['market','inn','pharmacy','workshop','pavilion','study','garden','teahouse','mountain','temple'].indexOf(card.id.split('.')[1]);return {x:1120+i%2*126,y:190+Math.floor(i/2)*178};}
  if(card.kind==='location'){const i=content.locations.findIndex(l=>l.id===card.id);return{x:1120+(i%2)*126,y:190+Math.floor(i/2)*178};}
  if(card.kind==='event')return{x:1120+(index%2)*126,y:740};
  if(card.kind==='work'||card.kind==='insight')return{x:400+(index%4)*126,y:780};
@@ -148,7 +156,7 @@ export function layoutRects(positions:Record<string,Point>,cards:TableCard[]):La
  ];
 }
 export function openingFocusRects(positions:Record<string,Point>,cards:TableCard[]){
- const ids=new Set(['verb.study','verb.talk','verb.create','verb.work',PLAYER,'character.teacher','instance.qin','instance.score']);
+ const ids=new Set(['verb.study','verb.talk','verb.create','verb.work',PLAYER,'character.teacher','instance.qin','instance.score','thread.CH01.0','means.money','supply.food','intent.careful','verb.travel','verb.cultivate',...cards.filter(c=>c.id.startsWith('tool.')).map(c=>c.id)]);
  return layoutRects(positions,cards).filter(r=>ids.has(r.id));
 }
 export function deskFocusRects(positions:Record<string,Point>,cards:TableCard[]){
@@ -164,16 +172,18 @@ export function cameraToFit(rects:LayoutRect[],viewport:{width:number;height:num
  return {zoom,x:(viewport.width-bw*zoom)/2-minX*zoom,y:(viewport.height-bh*zoom)/2-minY*zoom};
 }
 export function migrateTabletop(ui:TabletopState,cards:TableCard[]):TabletopState{
- if(ui.layoutVersion===LAYOUT_VERSION)return ui;
- return {...ui,layoutVersion:LAYOUT_VERSION,positions:defaultLayout(cards)};
+ const version=cards.some(c=>c.aspects.includes('mortal'))?3:LAYOUT_VERSION;
+ if(ui.layoutVersion===version)return ui;
+ return {...ui,layoutVersion:version,positions:defaultLayout(cards)};
 }
 export const screenToWorld=(p:Point,camera:{x:number;y:number;zoom:number}):Point=>({x:(p.x-camera.x)/camera.zoom,y:(p.y-camera.y)/camera.zoom});
 export function zoomAt(camera:{x:number;y:number;zoom:number},point:Point,zoom:number){
  const z=Math.min(1.5,Math.max(.45,zoom));const fixed=screenToWorld(point,camera);return{x:point.x-fixed.x*z,y:point.y-fixed.y*z,zoom:z};
 }
-export function cardAvailable(card:TableCard,w:World,held:Set<string>){return !held.has(card.id)&&(!card.entity||!busy(w,card.id));}
-export function pendingProjects(w:World,ui:TabletopState){return Object.values(w.projects).filter(p=>p.state==='completed'&&!ui.collected.includes(p.id));}
+export function cardAvailable(card:TableCard,w:World,held:Set<string>){return !(chapter(w)&&lockedMortalCards(w).has(card.id))&&!held.has(card.id)&&(!card.entity||!busy(w,card.id));}
+export function pendingProjects(w:World,ui:TabletopState){return desktopProjects(w).filter(p=>p.state==='completed'&&(chapter(w)?!w.mortal.cardRuns?.[p.id]?.collected:!ui.collected.includes(p.id)));}
 export function returnCards(p:Project,cards:TableCard[],w:World):TableCard[]{
+ if(chapter(w))return w.mortal.cardRuns?.[p.id]?.outputs??[];
  const ids=new Set(Object.values(p.boundSlots));
  for(const c of cards){if(c.kind==='work'&&c.id.startsWith(p.id+'/'))ids.add(c.id);if(c.kind==='insight'&&w.insights.some(i=>i.id===c.id&&i.source===p.id))ids.add(c.id);}
  const def=actionById(p.definitionId);for(const effect of def.effects)if(effect.op==='item')for(const c of cards)if(c.entity?.definitionId===effect.definitionId&&c.entity.ownerId===(p.delegated?'org':PLAYER))ids.add(c.id);
@@ -185,7 +195,7 @@ export function returnCards(p:Project,cards:TableCard[],w:World):TableCard[]{
 export function placeReturnedCards(returned:TableCard[],cards:TableCard[],positions:Record<string,Point>,origin:Point):Record<string,Point>{
  const next={...positions},ids=new Set(returned.map(c=>c.id));
  const occupied=cards.filter(c=>!ids.has(c.id)).map(c=>positions[c.id]??initialCardPosition(c,cards.indexOf(c)));
- const free=(point:Point)=>occupied.every(p=>Math.abs(p.x-point.x)>=122||Math.abs(p.y-point.y)>=170);
+ const free=(point:Point)=>occupied.every(p=>Math.abs(p.x-point.x)>=122||Math.abs(p.y-point.y)>=170)&&verbs.every(v=>{const p=positions['verb.'+v.id]??v.position;return point.x>=p.x+128||point.x+118<=p.x||point.y>=p.y+158||point.y+166<=p.y;});
  for(const card of returned){
   let point=positions[card.id]??initialCardPosition(card,cards.indexOf(card));
   if(!free(point)){

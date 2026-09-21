@@ -1,8 +1,9 @@
+import {createCharacter} from './setup';
 import {createLegacyWorld} from '../../src/domain/world';
 import {envelope} from '../../src/infrastructure/save';
 import { test,expect,type Page,type Locator } from '@playwright/test';
 async function boot(page:Page){
- await page.goto('/');await expect(page.getByRole('button',{name:'踏上青溪岸'})).toBeEnabled();await page.getByRole('button',{name:'踏上青溪岸'}).click();await page.getByRole('button',{name:'存档',exact:true}).click();
+ await page.goto('/');await createCharacter(page);await page.getByRole('button',{name:'存档',exact:true}).click();
  await page.locator('input[type=file]').setInputFiles({name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(envelope(createLegacyWorld())))});
  await expect(page.getByTestId('card-character.learner')).toBeVisible();await expect(page.getByRole('button',{name:'保存状态'})).toContainText('已保存到本机');
 }

@@ -1,4 +1,6 @@
+import {knownVerbs} from '../domain/mortal-discovery';
 import {MortalApp} from './MortalApp';
+import {chapter,desktopProjects,desktopAction,desktopEvents,desktopOptions,stackPreview,chapterHints} from './mortal-tabletop';
 import { useEffect,useRef,useState,useSyncExternalStore,type CSSProperties,type PointerEvent as ReactPointerEvent,type ReactNode } from 'react';
 import { Pause,Play,X,Plus,Minus,Maximize,LayoutGrid,Archive,Users,Leaf,BookOpen,HelpCircle,Coins,Sparkles,Clock3,ArrowRight,ChevronDown,CornerDownLeft,SkipForward,MapPin } from 'lucide-react';
 import { session } from '../application/game-session';
@@ -6,8 +8,7 @@ import { freshTabletop,type Point,type TabletopState } from '../application/ui-s
 import { PLAYER,type World } from '../domain/model';
 import { available,busy,locationOf,hasFact } from '../domain/world';
 import { displayDao } from '../domain/dao';
-import { eventOptions } from '../domain/events';
-import { actionById,content } from '../content';
+import { content } from '../content';
 import { verbs,cardsFor,projectVerb,slotsFor,resolveDraft,fitSlot,sanitizeDraft,initialCardPosition,screenToWorld,zoomAt,cardAvailable,pendingProjects,returnCards,placeReturnedCards,aspectNames,defaultLayout,openingFocusRects,deskFocusRects,cameraToFit,migrateTabletop,LAYOUT_VERSION,type VerbId,type TableCard,type Draft } from './tabletop';
 import { Glyph,Illustration } from './Glyph';
 import { PanelContents,panelNames,dateText,timeLabel,type PanelId } from './Panels';
@@ -19,7 +20,7 @@ function CardFace({card,small=false}:{card:TableCard;small?:boolean}){
  return <div className={'card-face '+(small?'mini ':'')+'kind-'+card.kind} style={{'--card-accent':card.color} as CSSProperties}>
  <span className="card-corner tl"/><span className="card-corner tr"/><span className="card-corner bl"/><span className="card-corner br"/>
  <div className="card-illustration"><Illustration kind={card.art}/></div><div className="card-name">{card.name}</div><div className="card-divider"><i/>◇<i/></div><div className="card-subtitle">{card.subtitle}</div>
- <div className="card-aspects">{card.aspects.slice(0,3).map(t=><i key={t} title={aspectNames[t]??t}>{(aspectNames[t]??'缘')[0]}</i>)}</div>
+ <div className="card-aspects">{card.aspects.filter(t=>t!=='mortal').slice(0,3).map(t=><i key={t} title={aspectNames[t]??t}>{(aspectNames[t]??'缘')[0]}</i>)}</div>
  {card.entity&&card.entity.quantity>1&&<span className="card-count">{card.entity.quantity}</span>}
  </div>;
 }
@@ -29,8 +30,8 @@ function Window({name,position,onClose,onMove,children,accent,className=''}:{nam
  <div className="window-body">{children}</div>
  </section>;
 }
-function LegacyApp(){
- const state=useSyncExternalStore(session.subscribe,session.getSnapshot),w=state.world,p=w.entities[PLAYER];
+function TabletopApp(){
+ const state=useSyncExternalStore(session.subscribe,session.getSnapshot),w=state.world,p=w.entities[PLAYER],mortal=chapter(w);
  const rootRef=useRef<HTMLDivElement>(null),viewportRef=useRef<HTMLDivElement>(null);
  const [ui,setUi]=useState<TabletopState>(freshTabletop),uiRef=useRef(ui);
  const [activeVerb,setActiveVerb]=useState<VerbId|null>(null),[drafts,setDrafts]=useState<Drafts>({}),draftRef=useRef(drafts);
@@ -39,21 +40,22 @@ function LegacyApp(){
  const [toast,setToast]=useState(''),[dragging,setDragging]=useState<string|null>(null),[ghost,setGhost]=useState<{card:TableCard;point:Point;width:number}|null>(null),[hoverDrop,setHoverDrop]=useState<string|null>(null);
  const gesture=useRef<Gesture|null>(null),suppressClick=useRef(0),initialized=useRef(''),zoomSave=useRef<ReturnType<typeof setTimeout>|null>(null);
  const cards=cardsFor(w),cardsRef=useRef(cards),worldRef=useRef(w);cardsRef.current=cards;worldRef.current=w;
- const pending=pendingProjects(w,ui),running=Object.values(w.projects).filter(x=>x.state==='running');
+ const pending=pendingProjects(w,ui),running=desktopProjects(w).filter(x=>x.state==='running');
  const held=new Set(pending.flatMap(proj=>returnCards(proj,cards,w).map(c=>c.id)));
  const loaded=new Set(Object.values(drafts).flatMap(d=>Object.values(d??{})));
  const hidden=new Set([...held,...running.flatMap(proj=>Object.values(proj.boundSlots)),...loaded]);
  const shownCards=cards.filter(c=>!hidden.has(c.id));
- const verb=verbs.find(v=>v.id===activeVerb),draft=activeVerb?drafts[activeVerb]??{}:{};
+ const visibleVerbs=mortal?verbs.filter(v=>knownVerbs(w).includes(v.id)):verbs;
+ const verb=visibleVerbs.find(v=>v.id===activeVerb),draft=activeVerb?drafts[activeVerb]??{}:{};
  const verbProjects=activeVerb?[...pending,...running].filter(pr=>projectVerb(pr)===activeVerb):[];
  const project=verbProjects[0],slots=activeVerb?slotsFor(activeVerb,draft,cards,w):[];
  const resolved=activeVerb?resolveDraft(activeVerb,draft,cards,w):null;
- const preview=resolved?session.preview(Object.values(resolved.bindings)).find(x=>x.action.id===resolved.actionId):null;
+ const preview=mortal&&activeVerb?stackPreview(w,activeVerb,draft):resolved?session.preview(Object.values(resolved.bindings)).find(x=>x.action.id===resolved.actionId):null;
  const focusedCard=cards.find(c=>c.id===selected),dragCard=cards.find(c=>c.id===dragging);
  const highlightSlot=slots.find(s=>s.id===activeSlot);
  const here=content.locations.find(l=>l.id===locationOf(w,PLAYER))!;
- const openEvents=Object.values(w.events).filter(e=>!e.settled);
- const event=activeEvent?w.events[activeEvent]:null;
+ const events=desktopEvents(w),openEvents=Object.values(events).filter(e=>!e.settled);
+ const event=activeEvent?events[activeEvent]:null;
  const readonly=state.pauses.includes('read_only');
 
  const persist=(next:TabletopState)=>{uiRef.current=next;setUi(next);session.updateTabletop(next);};
@@ -83,19 +85,20 @@ function LegacyApp(){
   const currentWorld=worldRef.current;
   const pendingHold=new Set(pendingProjects(currentWorld,uiRef.current).flatMap(pr=>returnCards(pr,cardsRef.current,currentWorld).map(c=>c.id)));
   if(!cardAvailable(card,currentWorld,pendingHold)){notify('这张卡牌还在行事中，或等待收取。');return false;}
-  if(Object.values(currentWorld.projects).some(pr=>projectVerb(pr)===toVerb&&(pr.state==='running'||(pr.state==='completed'&&!uiRef.current.collected.includes(pr.id))))){notify('请先处理这项行事中的卡牌。');return false;}
+  if(desktopProjects(currentWorld).some(pr=>projectVerb(pr)===toVerb&&(pr.state==='running'||(pr.state==='completed'&&!uiRef.current.collected.includes(pr.id))))){notify('请先处理这项行事中的卡牌。');return false;}
   const targetDraft={...(draftRef.current[toVerb]??{})};
   // Moving a card between slots is visual preparation, not a domain command.
   for(const key of Object.keys(targetDraft))if(targetDraft[key]===cardId)delete targetDraft[key];
   const slotId=fitSlot(card,toVerb,targetDraft,cardsRef.current,currentWorld,preferred);
   if(!slotId){notify('这处槽位容不下这张卡牌。查看槽位下的属性提示。');return false;}
-  const next:Drafts={};for(const v of verbs){const d={...(draftRef.current[v.id]??{})};for(const key of Object.keys(d))if(d[key]===cardId)delete d[key];next[v.id]=d;}
+  const next:Drafts={};
   targetDraft[slotId]=cardId;next[toVerb]=sanitizeDraft(toVerb,targetDraft,cardsRef.current,currentWorld);
   setDraft(next);setActiveVerb(toVerb);setActiveSlot(null);setSelected(null);raiseWindow('verb');return true;
  };
  const removeSlot=(slotId:string)=>{if(!activeVerb)return;const next={...draft};delete next[slotId];setDraft({...drafts,[activeVerb]:sanitizeDraft(activeVerb,next,cards,w)});setActiveSlot(null);};
+ const closeAction=()=>{setDraft({});setActiveVerb(null);setActiveSlot(null);};
  const openVerb=(id:VerbId)=>{
-  setActiveVerb(id);setActiveSlot(id==='talk'?'actor':null);raiseWindow('verb');
+  setDraft({[id]:draftRef.current[id]??{}});setSelected(null);setActiveVerb(id);setActiveSlot(id==='talk'?'actor':null);raiseWindow('verb');
  };
  const clickCard=(card:TableCard)=>{
   if(Date.now()<suppressClick.current)return;
@@ -156,7 +159,7 @@ function LegacyApp(){
  };
  const startAction=()=>{
   if(!resolved||!preview||preview.errors.length||!activeVerb)return;
-  const result=session.start(resolved.actionId,resolved.bindings);
+  const result=mortal?session.startStack(activeVerb,resolved.bindings):session.start(resolved.actionId,resolved.bindings);
   if(!result.ok){notify(result.message);return;}
   const ids=new Set(Object.values(draft));const next:Drafts={};for(const [key,value]of Object.entries(drafts)){next[key as VerbId]=Object.fromEntries(Object.entries(value??{}).filter(([,id])=>!ids.has(id)));}
   setDraft(next);setActiveSlot(null);setSelected(null);
@@ -166,13 +169,15 @@ function LegacyApp(){
   if(!project||project.state!=='completed')return;
   const origin=position('verb.'+projectVerb(project),verbs.find(v=>v.id===projectVerb(project))!.position);
   const positions=placeReturnedCards(returnCards(project,cards,w),cards,uiRef.current.positions,origin);
+  if(mortal){const r=session.command({type:'MortalCollect',runId:project.id});if(!r.ok){notify(r.message);return;}}
   persist({...uiRef.current,positions,collected:[...new Set([...uiRef.current.collected,project.id])]});notify('卡牌与成果已回到桌面。');
  };
  useEffect(()=>{void session.boot();const timer=setInterval(()=>session.advance(5*session.getSnapshot().speed),500);const vis=()=>{if(document.hidden)session.hidden();};document.addEventListener('visibilitychange',vis);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',vis);};},[]);
  useEffect(()=>{if(!gesture.current){uiRef.current=state.tabletop;setUi(state.tabletop);}},[state.tabletop]);
  useEffect(()=>{if(!state.ready)return;if(initialized.current!==w.worldId){initialized.current=w.worldId;setDraft({});setSelected(null);setActiveVerb(null);setActiveEvent(null);const next=migrateTabletop(state.tabletop,cards);const migrated=next!==state.tabletop;if(migrated)persist(next);if(migrated||(!Object.keys(state.tabletop.positions).length&&state.tabletop.camera.x===0&&state.tabletop.camera.zoom===1))requestAnimationFrame(home);}},[state.ready,w.worldId]);
+ useEffect(()=>{if(!state.ready||!mortal)return;const incoming=shownCards.filter(c=>!uiRef.current.positions[c.id]);if(incoming.length)persist({...uiRef.current,positions:placeReturnedCards(incoming,cards,uiRef.current.positions,{x:530,y:700})});},[state.ready,w.worldId,w.revision]);
  useEffect(()=>{const canvas=viewportRef.current;if(!canvas)return;const wheel=(e:WheelEvent)=>{e.preventDefault();const box=canvas.getBoundingClientRect();changeZoom(e.deltaY<0?.06:-.06,{x:e.clientX-box.left,y:e.clientY-box.top});};canvas.addEventListener('wheel',wheel,{passive:false});return()=>canvas.removeEventListener('wheel',wheel);},[]);
- useEffect(()=>{const key=(e:KeyboardEvent)=>{if(['INPUT','SELECT','TEXTAREA'].includes((e.target as HTMLElement).tagName))return;if(e.code==='Space'&&(e.target as HTMLElement).tagName!=='BUTTON'){e.preventDefault();session.togglePause();}if(e.key==='Escape'){setActiveSlot(null);setSelected(null);if(activeEvent)setActiveEvent(null);else if(panel)setPanel(null);else setActiveVerb(null);}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[activeEvent,panel]);
+ useEffect(()=>{const key=(e:KeyboardEvent)=>{if(['INPUT','SELECT','TEXTAREA'].includes((e.target as HTMLElement).tagName))return;if(e.code==='Space'&&(e.target as HTMLElement).tagName!=='BUTTON'){e.preventDefault();session.togglePause();}if(e.key==='Escape'){setActiveSlot(null);setSelected(null);if(activeEvent)setActiveEvent(null);else if(panel)setPanel(null);else closeAction();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[activeEvent,panel]);
  useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(''),5000);return()=>clearTimeout(id);},[toast]);
  useEffect(()=>{if(event?.settled){setActiveEvent(null);setAnswer(null);}},[event?.settled]);
 
@@ -184,7 +189,7 @@ function LegacyApp(){
    <div className="table-decoration table-letter" style={{left:300,top:118}}>青 溪 · 人 间</div>
    <div className="table-decoration table-label" style={{left:1120,top:150}}>远近山河</div>
    <div className="table-decoration table-label table-hand-label" style={{left:400,top:328}}>案上所携</div>
-   {verbs.map(v=>{
+   {visibleVerbs.map(v=>{
     const tasks=[...pending,...running].filter(pr=>projectVerb(pr)===v.id),task=tasks[0],ready=task?.state==='completed',isRunning=task?.state==='running';
     const progress=task?clamp((w.tick-task.startedTick)/(task.dueTick-task.startedTick),0,1):0;
     const accepts=dragCard&&!task&&!!fitSlot(dragCard,v.id,drafts[v.id]??{},cards,w);
@@ -203,25 +208,26 @@ function LegacyApp(){
     const eligible=!!highlightSlot?.accept(card)&&cardAvailable(card,w,held);
     const newEvent=card.kind==='event'&&!ui.seenEvents.includes(card.id);
     return <button key={card.id} className={'table-card '+(selected===card.id?'selected ':'')+(eligible?'eligible ':'')+(dragging===card.id?'drag-source ':'')+(newEvent?'new-arrival ':'')} style={{left:pos.x,top:pos.y,zIndex:selected===card.id?12:card.kind==='event'?10:2+index%4}} data-testid={'card-'+card.id} data-card-id={card.id} aria-label={'卡牌：'+card.name} onPointerDown={e=>beginCard(card,e)} onClick={()=>clickCard(card)} onDoubleClick={()=>doubleCard(card)} onKeyDown={e=>{if(e.key==='Enter'&&activeVerb){e.preventDefault();insert(card.id,activeVerb,activeSlot??undefined);}}}>
-    <CardFace card={card}/>{newEvent&&<span className="new-seal">新</span>}{card.kind==='event'&&<span className="card-expiry"><Clock3 size={10}/>{timeLabel(w.events[card.id].expiresTick-w.tick)}</span>}
+    <CardFace card={card}/>{newEvent&&<span className="new-seal">新</span>}{card.kind==='event'&&<span className="card-expiry"><Clock3 size={10}/>{mortal?'待回应':timeLabel(events[card.id].expiresTick-w.tick)}</span>}
     </button>;
    })}
   </div>
  </div>
  <header className="hud"><div className="table-brand"><span className="brand-mark">山<br/>河</span><div><h1>山河问道</h1><span>此生由你落笔</span></div></div><div className="hud-center"><span><Coins size={15}/><b data-testid="money">{w.money}</b><small>文</small></span><span><Sparkles size={14}/><b>{displayDao(p)}</b><small>道行</small></span><span className="location-now"><MapPin size={14}/>{here.name}</span></div><div className="table-clock"><span>{dateText(w.tick)}</span><button className="clock-pause" aria-label={state.pauses.length?'继续时间':'暂停时间'} onClick={()=>session.togglePause()}>{state.pauses.length?<Play size={16}/>:<Pause size={16}/>}</button>{[1,3,6].map(speed=><button key={speed} aria-label={speed+'倍速度'} className={state.speed===speed?'active':''} onClick={()=>session.setSpeed(speed)}>{speed}×</button>)}</div></header>
- <div className="top-utilities">{([{id:'character',icon:Users,label:'人物志'},{id:'organization',icon:Leaf,label:'宗务'},{id:'journal',icon:BookOpen,label:'日录'},{id:'save',icon:Archive,label:'存档'},{id:'help',icon:HelpCircle,label:'指引'}] as const).map(({id,icon:Icon,label})=><button key={id} onClick={()=>{setPanel(panel===id?null:id);raiseWindow('panel');}} aria-label={label}><Icon size={16}/><span>{label}</span></button>)}</div>
- <div className="table-time-status"><i className={state.pauses.length?'paused':''}/>{state.pauses.includes('event')?'来信待答 · 时光暂停':state.pauses.includes('hidden')?'离开期间已暂停':readonly?'只读桌面':state.pauses.length?'时光暂停':'时光流逝'}<small>空格切换</small></div>
+ <div className="top-utilities">{([{id:'character',icon:Users,label:'人物志'},{id:'organization',icon:Leaf,label:mortal?'起居':'宗务'},{id:'journal',icon:BookOpen,label:'日录'},{id:'save',icon:Archive,label:'存档'},{id:'help',icon:HelpCircle,label:'指引'}] as const).filter(({id})=>!mortal||id!=='organization'||knownVerbs(w).includes('talk')).map(({id,icon:Icon,label})=><button key={id} onClick={()=>{setPanel(panel===id?null:id);raiseWindow('panel');}} aria-label={label}><Icon size={16}/><span>{label}</span></button>)}</div>
+ {([...running,...pending].length>0)&&<aside className="card-locations" aria-label="卡牌去向" data-testid="card-locations"><h2>卡牌去向</h2>{[...running,...pending].map(pr=>{const v=verbs.find(v=>v.id===projectVerb(pr))!;const cargo=pr.state==='completed'?returnCards(pr,cards,w):Object.values(pr.boundSlots).map(id=>cards.find(c=>c.id===id)).filter((c):c is TableCard=>!!c);return <button key={pr.id} className="cargo-action" onClick={()=>openVerb(v.id)} aria-label={v.name+' · '+(pr.state==='completed'?'待收取':'进行中')+'：'+cargo.map(c=>c.name).join('、')}><strong>{v.name}<small>{pr.state==='completed'?'待收取':'进行中 · '+timeLabel(pr.dueTick-w.tick)}</small></strong><span className="cargo-cards">{cargo.map(c=><span key={c.id}><Illustration kind={c.art}/>{c.name}</span>)}</span><small>点击查看{pr.state==='completed'?'并收取':''}</small></button>;})}</aside>}
+ <div className="table-time-status">{mortal&&<small className="mortal-vitals">粮 {w.mortal.foodDays} 日 · {w.mortal.paidUntil>w.tick?'有住处':'待安顿'} · 疲劳 {p.fatigue}</small>}<i className={state.pauses.length?'paused':''}/>{state.pauses.includes('event')?'来信待答 · 时光暂停':state.pauses.includes('hidden')?'离开期间已暂停':readonly?'只读桌面':state.pauses.length?'时光暂停':'时光流逝'}<small>空格切换</small></div>
  {!state.ready&&<div className="loading-table">正在展开一段人生…</div>}
  {state.pauses.includes('save_error')&&<div className="system-banner">保存失败，时光已暂停。请打开存档导出当前进度或重试。</div>}
  {readonly&&<div className="system-banner">只读窗口：请在最初打开游戏的窗口继续。桌面整理不会写入此存档。</div>}
- {!ui.introductionDismissed&&state.ready&&<div className="first-whisper" data-testid="opening-whisper"><span>一把旧琴，一位故人。</span><p>打开「交游」，放入自己与沈知弦即可小坐。若要合奏，再放入旧琴和曲谱。</p><button data-testid="begin-meeting" onClick={e=>{e.stopPropagation();openVerb('talk');}}>从相遇开始 <ArrowRight size={13}/></button><button className="dismiss-whisper" aria-label="收起提示" onClick={e=>{e.stopPropagation();persist({...uiRef.current,introductionDismissed:true});}}>先四处看看</button></div>}
- {verb&&<Window name={verb.name} position={windowPosition('verb')} onMove={e=>moveWindow('verb',e)} onClose={()=>{setActiveVerb(null);setActiveSlot(null);}} accent={verb.color} className="verb-window">
+ {!ui.introductionDismissed&&state.ready&&<div className="first-whisper" data-testid="opening-whisper"><span>{mortal?'一只包袱，一张告示。':'一把旧琴，一位故人。'}</span><p>{mortal?'打开「行游」，投入自身和用工告示。开始后等候回响，再收取新的线索。':'打开「交游」，放入自己与沈知弦即可小坐。若要合奏，再放入旧琴和曲谱。'}</p><button data-testid="begin-meeting" onClick={e=>{e.stopPropagation();openVerb(mortal?'travel':'talk');}}>{mortal?'从告示开始':'从相遇开始'} <ArrowRight size={13}/></button><button className="dismiss-whisper" aria-label="收起提示" onClick={e=>{e.stopPropagation();persist({...uiRef.current,introductionDismissed:true});}}>先四处看看</button></div>}
+ {verb&&<Window name={verb.name} position={windowPosition('verb')} onMove={e=>moveWindow('verb',e)} onClose={closeAction} accent={verb.color} className="verb-window">
   <div className="verb-window-emblem"><Glyph kind={verb.symbol}/></div>
-  {project?<><p className="window-kicker">{project.state==='completed'?'一段经历，已有回响':'时光正在其中流转'}</p><h3 className="action-title">{actionById(project.definitionId).name}</h3>
-   {project.state==='running'?<><p className="story-text">{actionById(project.definitionId).description}</p><div className="running-cards">{Object.values(project.boundSlots).map(id=>{const card=cards.find(c=>c.id===id);return card?<div key={id}><CardFace card={card} small/></div>:null;})}</div><div className="action-timer"><span>还需 {timeLabel(project.dueTick-w.tick)}</span><div><i style={{width:((w.tick-project.startedTick)/(project.dueTick-project.startedTick)*100)+'%'}}/></div></div><div className="button-row"><button className="subtle-button" onClick={()=>session.waitForAction()}><SkipForward size={14}/>等候下一进展</button><button className="text-button" onClick={()=>{const r=session.command({type:'CancelAction',projectId:project.id});if(!r.ok)notify(r.message);}}>取消行事</button></div><p className="muted">取消将归还未消耗的物资；已付出的许可、材料和时间不会返还。</p></>
-   :<><p className="story-text">一段时间过去。属于你的本领与经历已经留下，案上的人和物也将各归其位。</p><div className="outcome-list">{actionById(project.definitionId).effects.filter(e=>['practice','relationship','payment','work','health','longevity','item','insight'].includes(e.op)).map(e=><span key={e.id}>{e.op==='practice'?(content.skills.find(s=>s.id===e.skillId)?.name??'技艺')+' +'+e.units:e.op==='relationship'?(e.units<0?'默契受了损伤':'默契与信任有所增加'):e.op==='payment'?'履约所得 '+e.amount+' 文':e.op==='work'?'完成《'+e.title+'》':e.op==='health'?(e.units<0?'身体受了损耗':'身体得到调养'):e.op==='item'?'炼成或收得新的物资':e.op==='insight'?'留下一句心得':e.op==='longevity'?'验证具体调养方法':''}</span>)}</div><div className="result-cards">{returnCards(project,cards,w).map(card=><div key={card.id}><CardFace card={card} small/></div>)}</div><button className="brass-button wide" onClick={collect}>收取成果 <CornerDownLeft size={15}/></button><p className="muted">收起这段经历，让人物与器物回到案上。</p></>}
+  {project?<><p className="window-kicker">{project.state==='completed'?'一段经历，已有回响':'时光正在其中流转'}</p><h3 className="action-title">{desktopAction(w,project.definitionId).name}</h3>
+   {project.state==='running'?<><p className="story-text">{desktopAction(w,project.definitionId).description}</p><div className="running-cards">{Object.values(project.boundSlots).map(id=>{const card=cards.find(c=>c.id===id);return card?<div key={id}><CardFace card={card} small/></div>:null;})}</div><div className="action-timer"><span>还需 {timeLabel(project.dueTick-w.tick)}</span><div><i style={{width:((w.tick-project.startedTick)/(project.dueTick-project.startedTick)*100)+'%'}}/></div></div><div className="button-row"><button className="subtle-button" onClick={()=>session.waitForAction()}><SkipForward size={14}/>等候下一进展</button><button className="text-button" onClick={()=>{const r=session.command(mortal?{type:'CancelMortal'}:{type:'CancelAction',projectId:project.id});if(!r.ok)notify(r.message);}}>取消行事</button></div><p className="muted">取消将归还未消耗的物资；已付出的许可、材料和时间不会返还。</p></>
+   :<><p className="story-text">{mortal?desktopAction(w,project.definitionId).description:'一段时间过去。属于你的本领与经历已经留下，案上的人和物也将各归其位。'}</p><div className="outcome-list">{desktopAction(w,project.definitionId).effects.filter(e=>['practice','relationship','payment','work','health','longevity','item','insight'].includes(e.op)).map(e=><span key={e.id}>{e.op==='practice'?(content.skills.find(s=>s.id===e.skillId)?.name??'技艺')+' +'+e.units:e.op==='relationship'?(e.units<0?'默契受了损伤':'默契与信任有所增加'):e.op==='payment'?'履约所得 '+e.amount+' 文':e.op==='work'?'完成《'+e.title+'》':e.op==='health'?(e.units<0?'身体受了损耗':'身体得到调养'):e.op==='item'?'炼成或收得新的物资':e.op==='insight'?'留下一句心得':e.op==='longevity'?'验证具体调养方法':''}</span>)}</div><div className="result-cards">{returnCards(project,cards,w).map(card=><div key={card.id}><CardFace card={card} small/></div>)}</div><button className="brass-button wide" onClick={collect}>收取成果 <CornerDownLeft size={15}/></button><p className="muted">收起这段经历，让人物与器物回到案上。</p></>}
    {verbProjects.length>1&&<p className="muted">这个方块还有 {verbProjects.length-1} 段进行中或待收取的经历。</p>}
-  </>:<><p className="window-kicker">{verb.description}</p><h3 className="action-title">{preview?.action.name??'你想如何'+verb.name+'？'}</h3><p className="story-text">{preview?.action.description??verb.hint}</p>
+  </>:<><p className="window-kicker">{verb.description}</p><h3 className="action-title">{preview?.action.name??'你想如何'+verb.name+'？'}</h3><p className="story-text">{preview?.action.description??(mortal?chapterHints[verb.id]:verb.hint)}</p>
    <div className="action-slots">{slots.map(slot=>{
     const card=cards.find(c=>c.id===draft[slot.id]);const canDrop=dragCard&&slot.accept(dragCard)&&(!card||card.id===dragCard.id);
     return <div key={slot.id} className="slot-column"><div className={'action-slot '+(card?'filled ':'')+(activeSlot===slot.id?'listening ':'')+(canDrop?'accepts ':'')+(hoverDrop===slot.id?'drop-over':'')} role="button" tabIndex={0} data-slot={slot.id} data-testid={'slot-'+slot.id} aria-label={'槽位：'+slot.name} onClick={()=>setActiveSlot(slot.id)} onKeyDown={e=>{if(e.key==='Enter')setActiveSlot(slot.id);}}>
@@ -231,20 +237,20 @@ function LegacyApp(){
    <div className="recipe-consequence">{preview?<><span><Clock3 size={13}/>{timeLabel(preview.action.duration)}</span><span>{preview.action.costs.length?preview.action.costs.map(c=>(c.resource==='currency'?'文':content.items.find(x=>x.id===c.resource)?.name)+' ×'+c.quantity+'（'+(c.phase==='start'?'开始':'完成')+'消耗）').join(' · '):'只占用时间与投入的人、物'}</span></>:<span>放入卡牌，才能看见这段故事的可能。</span>}</div>
    {preview?.errors.length?<p className="requirement">{preview.errors[0]}</p>:null}
    <button className="brass-button wide" disabled={!preview||preview.errors.length>0||readonly} onClick={startAction}>开始行事 <ArrowRight size={15}/></button>
-   {Object.keys(draft).length>0&&<button className="text-button return-all" onClick={()=>{setDraft({...drafts,[activeVerb!]:{}});setActiveSlot(null);}}>将这些卡牌放回桌面</button>}
+   {Object.keys(draft).length>0&&<button className="text-button return-all" onClick={()=>{setDraft({...drafts,[activeVerb!]:{}});setActiveSlot(null);}}>将这些卡牌放回桌面</button>}<p className="muted">关闭或切换行动会将尚未开始的卡牌退回原位。</p>
   </>}
  </Window>}
  {focusedCard&&<aside className="inspector" aria-label="卡牌详情"><button className="inspector-close" aria-label="收起卡牌详情" onClick={()=>setSelected(null)}><X size={14}/></button><span className="inspector-subtitle">{focusedCard.subtitle}</span><h2>{focusedCard.name}</h2><p>{focusedCard.description}</p><div className="aspect-tags">{focusedCard.aspects.map(t=><span key={t}>{aspectNames[t]??'一段缘分'}</span>)}</div>
-  {focusedCard.entity?.id===PLAYER&&<small>音律 {p.skills['skill.music']} · 健康 {p.health} · 疲劳 {p.fatigue}</small>}
+  {focusedCard.entity?.id===PLAYER&&<small>音律 {mortal?w.mortal.skills.music:p.skills['skill.music']} · 健康 {p.health} · 疲劳 {p.fatigue}</small>}
   {activeVerb&&!project&&fitSlot(focusedCard,activeVerb,draft,cards,w)&&<button className="subtle-button wide" onClick={()=>insert(focusedCard.id,activeVerb)}>投入「{verb?.name}」</button>}
-  {focusedCard.kind==='location'&&focusedCard.id===here.id&&<button className="subtle-button wide" onClick={()=>{const r=session.command({type:'Investigate'});if(!r.ok)notify(r.message);}}>探问此地消息</button>}
-  {focusedCard.id==='location.market'&&here.id==='location.market'&&<button className="subtle-button wide" onClick={()=>{const r=session.command({type:'BuyHerbs',quantity:2});if(!r.ok)notify(r.message);}}>买入两份灵草 · 4 文</button>}
-  {focusedCard.id==='location.mountain'&&here.id==='location.mountain'&&w.knowledge.some(k=>k.factId==='fact.mountain')&&!hasFact(w,'encounter_resolved')&&<div className="encounter-choices">{[['withdraw','退到安全处'],['negotiate','协商 · 8 文'],['hire','雇援 · 12 文'],['endure','承受铃击']].map(([id,label])=><button key={id} className="subtle-button" onClick={()=>{const r=session.command({type:'Encounter',choice:id as 'withdraw'|'negotiate'|'hire'|'endure'});if(!r.ok)notify(r.message);}}>{label}</button>)}</div>}
+  {!mortal&&focusedCard.kind==='location'&&focusedCard.id===here.id&&<button className="subtle-button wide" onClick={()=>{const r=session.command({type:'Investigate'});if(!r.ok)notify(r.message);}}>探问此地消息</button>}
+  {!mortal&&focusedCard.id==='location.market'&&here.id==='location.market'&&<button className="subtle-button wide" onClick={()=>{const r=session.command({type:'BuyHerbs',quantity:2});if(!r.ok)notify(r.message);}}>买入两份灵草 · 4 文</button>}
+  {!mortal&&focusedCard.id==='location.mountain'&&here.id==='location.mountain'&&w.knowledge.some(k=>k.factId==='fact.mountain')&&!hasFact(w,'encounter_resolved')&&<div className="encounter-choices">{[['withdraw','退到安全处'],['negotiate','协商 · 8 文'],['hire','雇援 · 12 文'],['endure','承受铃击']].map(([id,label])=><button key={id} className="subtle-button" onClick={()=>{const r=session.command({type:'Encounter',choice:id as 'withdraw'|'negotiate'|'hire'|'endure'});if(!r.ok)notify(r.message);}}>{label}</button>)}</div>}
  </aside>}
  {event&&!event.settled&&<Window name={event.title} position={windowPosition('event')} onMove={e=>moveWindow('event',e)} onClose={()=>setActiveEvent(null)} accent="#bf7970" className="event-window">
- <p className="window-kicker">案头来信 · 仍有 {timeLabel(event.expiresTick-w.tick)}</p><div className="letter-symbol"><Glyph kind="event"/></div><p className="event-story">{event.text}</p><div className="answer-cards">{eventOptions[event.kind]?.map(option=><button key={option.id} className={answer===option.id?'chosen':''} aria-label={option.text} onClick={()=>setAnswer(option.id)}><span>◇</span><b>{option.text}</b><small>{option.detail}</small></button>)}</div><div className="answer-slot"><span>你的回应</span><b>{eventOptions[event.kind]?.find(o=>o.id===answer)?.text??'尚未落定'}</b></div><button className="brass-button wide" disabled={!answer||readonly} onClick={()=>{if(!answer)return;const r=session.command({type:'ChooseEventOption',eventId:event.id,option:answer});if(!r.ok)notify(r.message);else {persist({...uiRef.current,seenEvents:[...new Set([...uiRef.current.seenEvents,event.id])]});setActiveEvent(null);setSelected(null);setAnswer(null);}}}>落定这一选择 <ArrowRight size={14}/></button>
+ <p className="window-kicker">{mortal?'身边小事 · 尚待回应':'案头来信 · 仍有 '+timeLabel(event.expiresTick-w.tick)}</p><div className="letter-symbol"><Glyph kind="event"/></div><p className="event-story">{event.text}</p><div className="answer-cards">{desktopOptions(w,event.kind)?.map(option=><button key={option.id} className={answer===option.id?'chosen':''} aria-label={option.text} onClick={()=>setAnswer(option.id)}><span>◇</span><b>{option.text}</b><small>{option.detail}</small></button>)}</div><div className="answer-slot"><span>你的回应</span><b>{desktopOptions(w,event.kind)?.find(o=>o.id===answer)?.text??'尚未落定'}</b></div><button className="brass-button wide" disabled={!answer||readonly} onClick={()=>{if(!answer)return;const r=session.command(mortal?{type:'MortalEvent',eventId:event.id,choice:answer as 'act'|'decline'}:{type:'ChooseEventOption',eventId:event.id,option:answer});if(!r.ok)notify(r.message);else {persist({...uiRef.current,seenEvents:[...new Set([...uiRef.current.seenEvents,event.id])]});setActiveEvent(null);setSelected(null);setAnswer(null);}}}>落定这一选择 <ArrowRight size={14}/></button>
  </Window>}
- {panel&&<Window name={panelNames[panel]} position={windowPosition('panel')} onMove={e=>moveWindow('panel',e)} onClose={()=>setPanel(null)} className="ledger-window"><PanelContents panel={panel} w={w} notify={notify} onClose={()=>{setPanel(null);setDraft({});setSelected(null);setActiveVerb(null);}}/></Window>}
+ {panel&&<Window name={mortal&&panel==='organization'?'食宿与起居':panelNames[panel]} position={windowPosition('panel')} onMove={e=>moveWindow('panel',e)} onClose={()=>setPanel(null)} className="ledger-window"><PanelContents panel={panel} w={w} notify={notify} onClose={()=>{setPanel(null);setDraft({});setSelected(null);setActiveVerb(null);}}/></Window>}
  <div className="bottom-ribbon"><button className="save-dot" aria-label="保存状态" onClick={()=>{setPanel('save');raiseWindow('panel');}}><i className={state.saveStatus.includes('失败')?'error':''}/>{state.saveStatus}</button><div className="pending-ribbon">{openEvents.map(e=><button key={e.id} onClick={()=>{setActiveEvent(e.id);setAnswer(null);raiseWindow('event');}}><span>✉</span>{e.title}{e.major&&<i/>}</button>)}</div><span className="table-instruction">拖动空白移动桌面 · 滚轮缩放 · 双击投入卡牌</span></div>
  <div className="table-controls"><button aria-label="缩小桌面" onClick={()=>changeZoom(-.1)}><Minus size={15}/></button><span data-testid="zoom-label">{Math.round(ui.camera.zoom*100)}%</span><button aria-label="放大桌面" onClick={()=>changeZoom(.1)}><Plus size={15}/></button><i/><button aria-label="视角归位" title="视角归位" onClick={home}><Maximize size={16}/></button><button aria-label="整理桌面" title="整理桌面，只改变摆放" onClick={arrange}><LayoutGrid size={16}/></button></div>
  {ghost&&<div className="drag-ghost" style={{left:ghost.point.x,top:ghost.point.y,width:ghost.width,transform:'rotate(3deg)'}}><CardFace card={ghost.card}/></div>}
@@ -255,5 +261,5 @@ function LegacyApp(){
 export function App(){
  const state=useSyncExternalStore(session.subscribe,session.getSnapshot);
  useEffect(()=>{void session.boot();},[]);
- return state.world.mortal.mode==='chapter'?<MortalApp state={state}/>:<LegacyApp/>;
+ return state.world.mortal.mode==='chapter'&&!state.world.mortal.created?<MortalApp state={state}/>:<TabletopApp/>;
 }
