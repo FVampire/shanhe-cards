@@ -1,3 +1,5 @@
+import {checkResearchContent} from '../src/content/research';
+checkResearchContent();
 import {validateMortalContent} from '../src/content/mortal';
 const mortal=validateMortalContent();console.log('凡尘篇正式内容：'+mortal.chains.length+' 条链、'+mortal.places.length+' 地点、'+mortal.roles.length+' 角色席位、'+mortal.methods.length+' 初修方法；短事件 '+mortal.shortSeeds.length+' 项。');
 import { readFileSync,readdirSync } from 'node:fs';

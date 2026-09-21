@@ -1,3 +1,5 @@
+import {freshNotebook,NotebookSchema,type Notebook,type Collection,type ResearchSetup} from '../domain/research-model';
+import {updateCollection,collectionStock,mergeNotebook,collectionSignature} from '../domain/notebook';
 import { freshTabletop,TabletopSchema,type TabletopState,type UiSaveState } from './ui-state';
 import { createWorld,hasFact } from '../domain/world';
 import { dispatch,advanceWorld } from '../domain/engine';
@@ -6,10 +8,11 @@ import { PLAYER,type World,type Command,type Result } from '../domain/model';
 import { content } from '../content';
 import { SaveRepository,envelope,parseSave } from '../infrastructure/save';
 type Pause='user'|'hidden'|'event'|'save_error'|'read_only'|'system_error';
-export type Snapshot={world:World;pauses:Pause[];speed:number;saveStatus:string;ready:boolean;notice:string;tabletop:TabletopState};
+export type Snapshot={notebook:Notebook;prepared:string[];researchDraft:ResearchSetup|null;world:World;pauses:Pause[];speed:number;saveStatus:string;ready:boolean;notice:string;tabletop:TabletopState};
 export class GameSession{
+ private notebook=freshNotebook();private prepared:string[]=[];private researchDraft:ResearchSetup|null=null;
  private world=createWorld();private listeners=new Set<()=>void>();private pauses=new Set<Pause>(['user']);private speed=1;
- private repository=new SaveRepository();private pending:{world:World;ui:UiSaveState}|null=null;private writing:Promise<void>|null=null;private releaseLock:(()=>void)|null=null;
+ private repository=new SaveRepository();private pending:{world:World;ui:UiSaveState;notebook:Notebook}|null=null;private writing:Promise<void>|null=null;private releaseLock:(()=>void)|null=null;
  private tabletop=freshTabletop();
  private snapshot!:Snapshot;private ready=false;private saveStatus='正在读取存档';private notice='';private writable=false;private started=false;
  constructor(){this.publish();}
@@ -17,8 +20,9 @@ export class GameSession{
  subscribe=(listener:()=>void)=>{this.listeners.add(listener);return()=>{this.listeners.delete(listener);};};
  private publish(){
   const known=new Set(this.world.knowledge.filter(k=>k.observerId===PLAYER).map(k=>k.factId));
-  const visible={...this.world,facts:Object.fromEntries(Object.entries(this.world.facts).filter(([id])=>known.has(id))),rolls:{},knowledge:this.world.knowledge.filter(k=>k.observerId===PLAYER)};
-  this.snapshot={world:visible,pauses:[...this.pauses],speed:this.speed,saveStatus:this.saveStatus,ready:this.ready,notice:this.notice,tabletop:this.tabletop};this.listeners.forEach(l=>l());
+  const r=this.world.research;
+  const visible={...this.world,research:r?{...r,rules:{},action:r.action?{...r.action,outcome:'',text:''}:null}:r,facts:Object.fromEntries(Object.entries(this.world.facts).filter(([id])=>known.has(id))),rolls:{},knowledge:this.world.knowledge.filter(k=>k.observerId===PLAYER)};
+  this.snapshot={notebook:this.notebook,prepared:this.prepared,researchDraft:this.researchDraft,world:visible,pauses:[...this.pauses],speed:this.speed,saveStatus:this.saveStatus,ready:this.ready,notice:this.notice,tabletop:this.tabletop};this.listeners.forEach(l=>l());
  }
  async boot(){
   if(this.started)return;this.started=true;
@@ -31,14 +35,14 @@ export class GameSession{
      }).catch(()=>{this.pauses.add('read_only');resolve();});
     });
    }else this.pauses.add('read_only');
-   const result=await this.repository.load();
+   const result=await this.repository.load();this.notebook=await this.repository.loadNotebook();
    if(result.save){this.world=result.save.world;this.tabletop=result.save.ui.tabletop??{...freshTabletop(),collected:Object.values(this.world.projects).filter(p=>p.state!=='running').map(p=>p.id)};}
    this.saveStatus=this.writable?(result.recovered?'已恢复上一份完整快照':result.save?'已读取本地存档':'尚未保存'):'只读模式 · 另一窗口正在游玩或浏览器不支持写锁';
    this.ready=true;this.syncEventPause();this.publish();
    if(this.writable)await this.save();
   }catch(e){this.ready=true;this.failSave(e);this.publish();}
  }
- private syncEventPause(){if(Object.values(this.world.events).some(e=>e.major&&!e.settled))this.pauses.add('event');else this.pauses.delete('event');}
+ private syncEventPause(){if(this.world.research?.warning||Object.values(this.world.events).some(e=>e.major&&!e.settled))this.pauses.add('event');else this.pauses.delete('event');}
  command(c:Command):Result{
   if(!this.ready||!this.writable)return{ok:false,code:'PERMISSION_DENIED',message:'当前存档为只读，请在最初打开的窗口操作。'};
   if(this.pauses.has('system_error'))return{ok:false,code:'SYSTEM_ERROR',message:'规则运行异常，请导出存档后重新载入。'};
@@ -66,7 +70,7 @@ export class GameSession{
  }
  waitForAction(){
   if(!this.writable||['event','save_error','hidden','read_only','system_error'].some(p=>this.pauses.has(p as Pause)))return;
-  const next=Math.min(...Object.values(this.world.projects).filter(p=>p.state==='running').map(p=>p.dueTick),...(this.world.mortal.task?[this.world.mortal.task.dueTick]:[]),this.world.mortal.mode==='chapter'&&this.world.mortal.task?this.world.mortal.task.dueTick:this.world.tick+180);
+  const next=Math.min(this.world.research?.action?.dueTick??Infinity,...Object.values(this.world.projects).filter(p=>p.state==='running').map(p=>p.dueTick),...(this.world.mortal.task?[this.world.mortal.task.dueTick]:[]),this.world.mortal.mode==='chapter'&&(this.world.mortal.task||this.world.research?.action)?(this.world.mortal.task?.dueTick??this.world.research!.action!.dueTick):this.world.tick+180);
   this.pauses.delete('user');this.advance(next-this.world.tick);this.pauses.add('user');this.publish();
  }
  startStack(verb:import('../domain/mortal-model').StackVerb,bindings:Record<string,string>){const result=this.command({type:'MortalStack',verb,bindings});if(result.ok&&!document.hidden){this.pauses.delete('user');this.publish();}return result;}
@@ -75,16 +79,23 @@ export class GameSession{
   if(result.ok&&!document.hidden){this.pauses.delete('user');this.publish();}return result;
  }
  updateTabletop(next:TabletopState){this.tabletop=TabletopSchema.parse(next);this.publish();void this.save();}
+ setResearchDraft(draft:ResearchSetup){this.researchDraft=structuredClone(draft);this.publish();}
+ saveCollection(c:Collection){if(!this.writable)throw new Error('当前窗口只读');const old=this.notebook.collections.find(x=>x.id===c.id);if(old&&collectionSignature(old)!==collectionSignature(c))c={...c,journey:this.world.worldId};this.notebook=updateCollection(this.notebook,c);this.publish();void this.save();}
+ deleteCollection(id:string){if(!this.writable)return;this.notebook={...this.notebook,collections:this.notebook.collections.filter(c=>c.id!==id)};this.publish();void this.save();}
+ prepareCollection(id:string){const c=this.notebook.collections.find(c=>c.id===id);if(!c)return;const stock=collectionStock(this.world,c);this.prepared=[...new Set(stock.flatMap(r=>r.ids))];this.researchDraft=c.setup?{...structuredClone(c.setup),inputs:c.setup.inputs.filter(i=>stock.some(row=>row.entry.id===i.id&&row.available>=i.quantity))}:null;this.publish();}
+ exportNotebook(){return JSON.stringify(this.notebook,null,2);}
+ async importNotebook(text:string){if(!this.writable)throw new Error('当前窗口只读');if(text.length>2*1024*1024)throw new Error('手札文件过大');this.notebook=mergeNotebook(this.notebook,NotebookSchema.parse(JSON.parse(text)),()=>crypto.randomUUID());this.publish();await this.save();}
  clearNotice(){this.notice='';this.publish();}
  private failSave(error:unknown){this.saveStatus='保存失败 · 请导出备份或重试';this.notice=(error as Error).message;this.pauses.add('save_error');}
  async save(){
   if(!this.writable||!this.ready)return;
-  this.pending={world:structuredClone(this.world),ui:{tab:'board',tabletop:structuredClone(this.tabletop)}};
+  this.notebook={...this.notebook,archive:[...new Map([...(this.notebook.archive??[]),...(this.world.research?.records??[])].map(r=>[r.journey+'/'+r.id,r])).values()],fixed:[...new Set([...this.notebook.fixed,...(this.world.research?.learned??[])])]};
+  this.pending={notebook:structuredClone(this.notebook),world:structuredClone(this.world),ui:{tab:'board',tabletop:structuredClone(this.tabletop)}};
   if(this.writing)return this.writing;
   this.writing=(async()=>{
    while(this.pending){
     const next=this.pending;this.pending=null;this.saveStatus='保存中…';this.publish();
-    try{await this.repository.save(next.world,next.ui);this.saveStatus='已保存到本机';this.pauses.delete('save_error');}
+    try{await this.repository.save(next.world,next.ui,next.notebook);this.saveStatus='已保存到本机';this.pauses.delete('save_error');}
     catch(e){this.pending=null;this.failSave(e);break;}
     this.publish();
    }
@@ -96,7 +107,7 @@ export class GameSession{
   if(!this.writable)throw new Error('当前窗口没有存档写入权限');
   if(text.length>8*1024*1024)throw new Error('存档超过 8 MB 限制');
   const candidate=parseSave(JSON.parse(text));await this.writing;
-  await this.repository.save(candidate.world,candidate.ui);this.world=candidate.world;this.tabletop=candidate.ui.tabletop??{...freshTabletop(),collected:Object.values(this.world.projects).filter(p=>p.state!=='running').map(p=>p.id)};this.pauses=new Set(['user']);this.notice='存档已载入，时间保持暂停。';this.syncEventPause();this.publish();
+  await this.repository.save(candidate.world,candidate.ui,this.notebook);this.prepared=[];this.researchDraft=null;this.world=candidate.world;this.tabletop=candidate.ui.tabletop??{...freshTabletop(),collected:Object.values(this.world.projects).filter(p=>p.state!=='running').map(p=>p.id)};this.pauses=new Set(['user']);this.notice='存档已载入，时间保持暂停。';this.syncEventPause();this.publish();
  }
  async recover(){
   const list=await this.repository.backups();const sorted=list.sort((a,b)=>b.sequence-a.sequence);

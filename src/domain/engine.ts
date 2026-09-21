@@ -1,3 +1,4 @@
+import {researchCommand,finishResearch} from './research';
 import { isMortal,mortalCommand,mortalDeadline,tickMortal } from './mortal';
 import type { MortalCommand } from './mortal-model';
 import { PLAYER,type World,type Envelope,type Result,type Command } from './model';
@@ -34,6 +35,7 @@ function blockDelegate(w:World,reason:string){
  log(w,'药园委托暂停：'+reason,'warning');
 }
 function apply(w:World,c:Command){
+ if(c.type==='Research'){researchCommand(w,c);return;}
  if(isMortal(w)){
   requireRule(c.type.startsWith('Mortal')||c.type==='CreateMortal'||c.type==='CancelMortal','PERMISSION_DENIED','凡尘篇请使用当前行事与生活入口。');
   mortalCommand(w,c as MortalCommand);return;
@@ -89,9 +91,10 @@ export function advanceWorld(w:World,target:number):World{
   const queued=d.schedule.filter(s=>s.dueTick>=d.tick&&d.projects[s.sourceId]?.generation===s.generation&&d.projects[s.sourceId].state==='running');
   const deadlines=Object.values(d.events).filter(e=>!e.settled).map(e=>e.expiresTick);
   if(d.contract.state==='accepted')deadlines.push(d.contract.expiresTick);
-  const next=Math.min(isMortal(d)?mortalDeadline(d,target):target,(Math.floor(d.tick/1440)+1)*1440,...queued.map(s=>s.dueTick),...deadlines.filter(t=>t>d.tick));
+  const next=Math.min(d.research?.action?.dueTick??target,isMortal(d)?mortalDeadline(d,target):target,(Math.floor(d.tick/1440)+1)*1440,...queued.map(s=>s.dueTick),...deadlines.filter(t=>t>d.tick));
   const delta=next-d.tick;for(const e of Object.values(d.entities))if(e.kind==='character')e.ageMinutes+=delta;d.tick=next;
-  if(isMortal(d)){if(tickMortal(d))break;continue;}
+  finishResearch(d);
+  if(isMortal(d)){if(tickMortal(d)||d.research?.warning)break;continue;}
   expire(d);
   const due=d.schedule.filter(s=>s.dueTick<=d.tick).sort((a,b)=>a.dueTick-b.dueTick||a.phase-b.phase||a.id.localeCompare(b.id));
   d.schedule=d.schedule.filter(s=>s.dueTick>d.tick);

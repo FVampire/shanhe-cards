@@ -1,3 +1,4 @@
+import {assertResearch} from './research';
 import {freshMortal} from './mortal-model';
 import {assertMortal} from './mortal';
 import { content } from '../content';
@@ -37,7 +38,7 @@ export function recordFact(w:World,type:string,subjectId:string,source:string){
 }
 export function hasFact(w:World,type:string,subject=PLAYER){return !!w.facts[type+'/'+subject];}
 export function assertWorld(input:unknown):asserts input is World{
- const w=WorldSchema.parse(input);assertMortal(w);
+ const w=WorldSchema.parse(input);assertMortal(w);assertResearch(w);
  for(const [id,e]of Object.entries(w.entities)){
   if(id!==e.id)throw new Error('实体索引不一致');
   if((e.location===null)===(e.containerId===null))throw new Error('物品位置来源必须唯一');

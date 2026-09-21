@@ -19,7 +19,7 @@ export const MortalSchema=z.object({
  discoveries:z.object({verbs:z.array(StackVerbSchema),places:z.array(z.string())}).strict().optional(),
  cardRuns:z.record(z.string(),StackRunSchema).optional(),
  relationships:z.record(z.string(),z.object({personId:z.string(),kind:z.enum(['acquaintance','colleague','guide']),trust:z.number().int().min(-100).max(100),facts:z.array(z.string()).max(12)}).strict()),
- assets:z.record(z.string(),z.object({id:z.string(),kind:z.enum(['item','method','clue','commitment','work']),name:z.string(),ownerId:z.string(),source:z.string(),quantity:n,location:z.string(),status:z.enum(['available','reserved','consumed','returned'])}).strict()),
+ assets:z.record(z.string(),z.object({instanceId:z.string().optional(),id:z.string(),kind:z.enum(['item','method','clue','commitment','work']),name:z.string(),ownerId:z.string(),source:z.string(),quantity:n,location:z.string(),status:z.enum(['available','reserved','consumed','returned'])}).strict()),
  ledger:z.array(z.object({id:z.string(),tick:n,from:z.string(),to:z.string(),amount:n,reason:z.string()}).strict()),
  mode:z.enum(['chapter','legacy']),created:z.boolean(),origin:z.enum(origins),talent:z.enum(['steady','observant','focused']),focus:z.enum(['life','work','path']),
  foodDays:n,paidUntil:n,lastChargedDay:n,reliefDay:z.number().int(),skills:z.record(z.string(),n),flags:z.array(z.string()),

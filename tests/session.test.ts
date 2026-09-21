@@ -5,6 +5,8 @@ import { SaveRepository,envelope } from '../src/infrastructure/save';
 import { createLegacyWorld as createWorld } from '../src/domain/world';
 import { PLAYER } from '../src/domain/model';
 import { freshTabletop } from '../src/application/ui-state';
+import {createWorld as createChapter} from '../src/domain/world';
+import {researchDomains} from '../src/content/research';
 const sessions:GameSession[]=[];
 let holder=false;
 beforeEach(()=>{
@@ -17,6 +19,14 @@ afterEach(async()=>{
 });
 async function boot(){const session=new GameSession();sessions.push(session);await session.boot();if(!session.getSnapshot().pauses.includes('read_only'))await session.import(JSON.stringify(envelope(createWorld())));return session;}
 describe('会话生命周期',()=>{
+ it('研究结果隐藏，收藏准备不执行，重建旅程保留独立图鉴和收藏但不继承局内证据',async()=>{
+  const s=await boot();await s.import(JSON.stringify(envelope(createChapter('notebook-test'))));s.command({type:'CreateMortal',name:'独行者',origin:'traveller',talent:'steady',acquaintance:false});s.command({type:'Research',operation:'enable',domain:'alchemy'});s.command({type:'Research',operation:'gather',domain:'alchemy'});s.waitForAction();
+  const setup={domain:'alchemy' as const,inputs:[{id:researchDomains.alchemy.base,quantity:1}],step:'steady' as const,intensity:'low' as const};
+  const w=s.getSnapshot().world;s.saveCollection({id:'note',name:'草稿',notes:'',tags:[],pinned:false,order:1,version:1,entries:[{ref:'kind',id:'xp.herb',name:'青叶草',quantity:1}],setup,journey:w.worldId,history:[]});s.prepareCollection('note');expect(s.getSnapshot().world).toEqual(w);expect(s.getSnapshot().prepared).toEqual(['xp.herb']);
+  s.command({type:'Research',operation:'experiment',domain:'alchemy',setup});expect(s.getSnapshot().world.research?.rules).toEqual({});expect(s.getSnapshot().world.research?.action?.outcome).toBe('');const running=JSON.parse(s.export()).world;expect(running.research.action.outcome).toBe('xp.salve');s.waitForAction();await s.save();
+  const repository=new SaveRepository();expect((await repository.loadNotebook()).fixed).toContain('alchemy');repository.close();await s.reset();expect(s.getSnapshot().notebook.collections).toHaveLength(1);expect(s.getSnapshot().notebook.archive).toHaveLength(1);expect(s.getSnapshot().world.research).toBeUndefined();expect(s.getSnapshot().prepared).toEqual([]);expect(s.getSnapshot().world.mortal.assets['xp.herb']).toBeUndefined();
+  await s.importNotebook(s.exportNotebook());expect(s.getSnapshot().notebook.collections).toHaveLength(2);expect(new Set(s.getSnapshot().notebook.collections.map(c=>c.id)).size).toBe(2);await s.save();
+ });
  it('旧存档的已完成经历不重复变成待收取，运行经历仍保持占用',async()=>{
   const s=await boot();s.start('action.duet',s.recipe('action.duet')!);s.waitForAction();const old=JSON.parse(s.export());delete old.ui.tabletop;await s.import(JSON.stringify(old));expect(s.getSnapshot().tabletop.collected).toContain('project.1');expect(s.getSnapshot().world.entities[PLAYER].skills['skill.music']).toBe(14);await s.save();
  });

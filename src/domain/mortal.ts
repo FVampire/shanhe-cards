@@ -11,7 +11,7 @@ export const isMortal=(w:World)=>w.mortal.mode==='chapter';
 const flag=(w:World,id:string)=>{if(!w.mortal.flags.includes(id))w.mortal.flags.push(id);};
 export const done=(w:World,id:string)=>w.mortal.flags.includes(id);
 export const chainDone=(w:World,id:string)=>!!chains.find(c=>c.id===id&& (w.mortal.stages[id]??0)>=c.stages.length);
-const free=(w:World)=>{requireRule(!lockedMortalCards(w).has(PLAYER),'ACTOR_BUSY','先收取已完成行事中的自身卡。');requireRule(!w.mortal.task&&!Object.values(w.projects).some(p=>p.state==='running'),'ACTOR_BUSY','你正在另一项行事中，请先完成或取消。');};
+const free=(w:World)=>{requireRule(!lockedMortalCards(w).has(PLAYER),'ACTOR_BUSY','先收取已完成行事中的自身卡。');requireRule(!w.research?.action&&!w.mortal.task&&!Object.values(w.projects).some(p=>p.state==='running'),'ACTOR_BUSY','你正在另一项行事中，请先完成或取消。');};
 function entry(w:World,from:string,to:string,amount:number,reason:string){const id='entry.'+(w.counters.entry=(w.counters.entry??0)+1);w.mortal.ledger.push({id,tick:w.tick,from,to,amount,reason});}
 function asset(w:World,id:string,kind:World['mortal']['assets'][string]['kind'],name:string,source:string,ownerId=PLAYER){w.mortal.assets[id]??={id,kind,name,source,ownerId,quantity:1,location:w.entities[PLAYER].location!,status:'available'};}
 const pay=(w:World,n:number)=>{requireRule(w.money>=n,'MISSING_REQUIREMENT','钱款不足，可先做公共短工或包食宿帮工。');w.money-=n;if(n)entry(w,PLAYER,'local.services',n,'实际支出');};
@@ -50,7 +50,7 @@ export type MortalPreview={name:string;minutes:number;cost:number;reward:number;
 export function previewMortal(w:World,actionId:string,choice=''):MortalPreview{
  const m=w.mortal,p=w.entities[PLAYER],out:MortalPreview={name:'',minutes:60,cost:0,reward:0,fatigue:8,location:null,role:null,errors:[],detail:''};
  if(!isMortal(w)||!m.created)out.errors.push('请先确定出身。');
- if(m.task)out.errors.push('自身正在行事，先完成或取消。');
+ if(m.task||w.research?.action)out.errors.push('自身正在行事，先完成或取消。');
  const chain=chains.find(c=>c.id===actionId);
  if(chain){
   const index=m.stages[actionId]??0,stage=chain.stages[index],option=stage?.choices.find(o=>o.id===choice);
@@ -190,7 +190,7 @@ export function tickMortal(w:World){
   if(eligible&&!m.shortEvents[seed.id])m.shortEvents[seed.id]={id:seed.id,state:'open',choice:null,personId:null,createdTick:w.tick};
  }
  if(interruption){m.plan=0;return true;}
- if(m.plan>0&&!m.task&&!lockedMortalCards(w).has(PLAYER)){
+ if(m.plan>0&&!w.research?.action&&!m.task&&!lockedMortalCards(w).has(PLAYER)){
   if(w.entities[PLAYER].fatigue>=m.planStopFatigue||w.entities[PLAYER].health<50||m.foodDays<1||m.paidUntil<w.tick+360||Object.values(m.shortEvents).some(e=>e.state==='open')){m.plan=0;log(w,'长期安排暂停：请检查食宿、身体或待处理消息。');}
   else {const pre=previewMortal(w,'work','light');if(pre.errors.length){m.plan=0;log(w,'长期安排暂停：'+pre.errors.join(' '));}else{m.plan--;start(w,'work','light');}}
  }

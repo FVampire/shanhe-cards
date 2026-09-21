@@ -7,3 +7,5 @@ playwright-report/
 docs/screenshots/*.png
 !docs/screenshots/凡尘-*.png
 
+
+!docs/screenshots/研究-*.png

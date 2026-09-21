@@ -180,7 +180,7 @@ export const screenToWorld=(p:Point,camera:{x:number;y:number;zoom:number}):Poin
 export function zoomAt(camera:{x:number;y:number;zoom:number},point:Point,zoom:number){
  const z=Math.min(1.5,Math.max(.45,zoom));const fixed=screenToWorld(point,camera);return{x:point.x-fixed.x*z,y:point.y-fixed.y*z,zoom:z};
 }
-export function cardAvailable(card:TableCard,w:World,held:Set<string>){return !(chapter(w)&&lockedMortalCards(w).has(card.id))&&!held.has(card.id)&&(!card.entity||!busy(w,card.id));}
+export function cardAvailable(card:TableCard,w:World,held:Set<string>){return !(w.research?.action&&(card.id===PLAYER||w.research.action.setup.inputs.some(i=>i.id===card.id)))&&!(chapter(w)&&lockedMortalCards(w).has(card.id))&&!held.has(card.id)&&(!card.entity||!busy(w,card.id));}
 export function pendingProjects(w:World,ui:TabletopState){return desktopProjects(w).filter(p=>p.state==='completed'&&(chapter(w)?!w.mortal.cardRuns?.[p.id]?.collected:!ui.collected.includes(p.id)));}
 export function returnCards(p:Project,cards:TableCard[],w:World):TableCard[]{
  if(chapter(w))return w.mortal.cardRuns?.[p.id]?.outputs??[];
